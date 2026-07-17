@@ -1,0 +1,26 @@
+# Secrets / runtime state — never commit
+secrets.h
+*.local.yaml
+wifi_credentials*
+motor_pins*
+*.env
+
+# Firmware build output (Arduino / PlatformIO)
+.pio/
+build/
+*.bin
+*.elf
+*.map
+
+# Release artifacts staged for upload
+firmware/dist/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+*.swp
+
+# Local MCP server config (may contain tokens) - never commit
+.mcp.json

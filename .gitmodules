@@ -1,0 +1,3 @@
+[submodule "vendor/somfy-sonesse2-ble-calib-tool-esp"]
+	path = vendor/somfy-sonesse2-ble-calib-tool-esp
+	url = https://github.com/magik6k/somfy-sonesse2-ble-calib-tool-esp.git

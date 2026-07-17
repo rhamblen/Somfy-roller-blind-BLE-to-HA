@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Somfy BLE Hub</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">SB</div>
+      <div>
+        <div class="brand-name" id="brandName">Somfy BLE Hub</div>
+        <div class="brand-status"><span class="dot" id="brandDot"></span><span id="brandState">connecting…</span></div>
+      </div>
+    </div>
+    <nav id="nav">
+      <a class="nav-item active" data-route="info"><span class="ni">ⓘ</span>Info</a>
+      <a class="nav-item" data-route="motors"><span class="ni">⧉</span>Motors</a>
+      <a class="nav-item" data-route="mqtt"><span class="ni">((•))</span>MQTT</a>
+      <a class="nav-item" data-route="system"><span class="ni">⚙</span>System</a>
+      <a class="nav-item" data-route="ota"><span class="ni">⬆</span>OTA Update</a>
+      <a class="nav-item" data-route="logs"><span class="ni">▤</span>Logs</a>
+    </nav>
+    <div class="side-foot">firmware <span id="sideFw">–</span></div>
+  </aside>
+
+  <!-- Main -->
+  <main>
+    <!-- INFO -->
+    <section class="page" id="page-info">
+      <h1>Dashboard</h1><p class="sub">Monitor your Somfy BLE Hub device status.</p>
+      <div class="grid">
+        <div class="card">
+          <div class="card-head"><span class="ic pink">▤</span><div><h2>Device</h2><p>Firmware &amp; identity</p></div></div>
+          <div class="kv"><span>Firmware</span><b id="i_fw">–</b></div>
+          <div class="kv"><span>Device name</span><b id="i_dev">–</b></div>
+          <div class="kv"><span>Hostname</span><b id="i_host">–</b></div>
+          <div class="kv"><span>Chip</span><b id="i_chip">–</b></div>
+          <div class="kv"><span>Uptime</span><b id="i_up">–</b></div>
+          <div class="kv"><span>Boot count</span><b id="i_boot">–</b></div>
+          <div class="kv"><span>Last restart</span><b id="i_reset">–</b></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="ic teal">◫</span><div><h2>Network &amp; Services</h2><p>Connectivity</p></div></div>
+          <div class="kv"><span>WiFi SSID</span><b id="i_ssid">–</b></div>
+          <div class="kv"><span>IP address</span><b id="i_ip">–</b></div>
+          <div class="kv"><span>MAC</span><b id="i_mac">–</b></div>
+          <div class="kv"><span>WiFi signal</span><b id="i_rssi">–</b></div>
+          <div class="kv"><span>Free heap</span><b id="i_heap">–</b></div>
+          <div class="kv"><span>MQTT broker</span><b id="i_mqtt">–</b></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="ic teal">⧉</span><div><h2>Motors</h2>
+          <p>Paired Somfy motors — pairing/calibration UI lands in Phase 3</p></div></div>
+        <table class="hw" style="width:100%;border-collapse:collapse">
+          <thead><tr><th style="text-align:left;color:var(--muted);font-size:.72rem;text-transform:uppercase;padding:0 10px 8px 4px">Name</th>
+            <th style="text-align:left;color:var(--muted);font-size:.72rem;text-transform:uppercase;padding:0 10px 8px 4px">MAC</th>
+            <th style="text-align:left;color:var(--muted);font-size:.72rem;text-transform:uppercase;padding:0 10px 8px 4px">Status</th></tr></thead>
+          <tbody id="i_motors"></tbody>
+        </table>
+        <p class="msg" id="i_motors_empty">No motors configured yet.</p>
+      </div>
+    </section>
+
+    <!-- MOTORS (placeholder — Phase 3 adds add/scan/pair/calibrate) -->
+    <section class="page hidden" id="page-motors">
+      <h1>Motors</h1><p class="sub">Paired Somfy motors.</p>
+      <div class="card">
+        <div class="card-head"><span class="ic pink">⧉</span><div><h2>Paired motors</h2><p>Read-only this release</p></div></div>
+        <div id="mo_list"></div>
+        <p class="msg" id="mo_empty">No motors configured yet.</p>
+        <p class="msg">Adding, BLE scanning, PIN pairing, and open/closed calibration are built in
+          Phase 1–3 (see <b>docs/project-plan.md</b>) — this release is the firmware framework only.</p>
+      </div>
+    </section>
+
+    <!-- MQTT -->
+    <section class="page hidden" id="page-mqtt">
+      <h1>MQTT Settings</h1><p class="sub">Configure the broker connection and Home Assistant discovery.</p>
+      <div class="card">
+        <div class="pill" id="mq_pill"><span class="dot"></span><span>unknown</span></div>
+        <div class="form2">
+          <label>Broker Address<input id="mq_host" placeholder="192.168.1.60"></label>
+          <label>Port<input id="mq_port" type="number" value="1883"></label>
+        </div>
+        <label class="full">Client ID<input id="mq_client" placeholder="auto (somfy-ble-XXXX)"></label>
+        <div class="form2">
+          <label>Username<input id="mq_user" placeholder="homeassistant"></label>
+          <label>Password<input id="mq_pass" type="password" placeholder="•••••• (unchanged)"></label>
+        </div>
+        <label class="full">Base Topic<input id="mq_base" placeholder="somfy-ble"></label>
+        <div class="toggle-row">
+          <div><b>Home Assistant MQTT Discovery</b><p>Enable automatic device discovery in Home Assistant</p></div>
+          <label class="switch"><input type="checkbox" id="mq_ha"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div><b>Enable MQTT</b><p>Connect to the broker on boot</p></div>
+          <label class="switch"><input type="checkbox" id="mq_en"><span class="slider"></span></label>
+        </div>
+        <div class="actions"><button class="btn primary" id="mq_save">Save &amp; Apply changes</button>
+          <span class="msg" id="mq_msg"></span></div>
+        <p class="msg">Hub-diagnostic sensors (WiFi signal, uptime) publish now. Per-motor <b>cover</b>
+          entities appear once Motors + BLE control land (Phase 4).</p>
+      </div>
+    </section>
+
+    <!-- SYSTEM -->
+    <section class="page hidden" id="page-system">
+      <h1>System Settings</h1><p class="sub">Device management, network, and security.</p>
+      <div class="card">
+        <div class="card-head"><span class="ic pink">⚡</span><div><h2>Quick Actions</h2><p>Device management and reset options</p></div></div>
+        <div class="actions">
+          <button class="btn ghost" id="qa_reboot">↻ Reboot</button>
+          <button class="btn danger" id="qa_wifi">⌫ Reset WiFi</button>
+          <button class="btn danger" id="qa_cfg">⌫ Reset config</button>
+          <span class="msg" id="qa_msg"></span>
+        </div>
+      </div>
+      <div class="tabs" data-tabs="sys">
+        <button class="tab active" data-tab="device"><span>Device</span></button>
+        <button class="tab" data-tab="wifi"><span>WiFi</span></button>
+        <button class="tab" data-tab="security"><span>Security</span></button>
+      </div>
+      <div class="card tabpane" data-pane="device">
+        <div class="kv"><span>Device name</span><b id="sy_dev">–</b></div>
+        <div class="kv"><span>Hostname</span><b id="sy_host">–</b></div>
+        <div class="kv"><span>Firmware</span><b id="sy_fw">–</b></div>
+      </div>
+      <div class="card tabpane hidden" data-pane="wifi">
+        <div class="kv"><span>Current network</span><b id="wf_cur">–</b></div>
+        <div class="kv"><span>IP address</span><b id="wf_ip">–</b></div>
+        <div class="form2">
+          <label>Network
+            <select id="wf_sel"><option value="">— scan for networks —</option></select>
+          </label>
+          <div class="endbtn"><button class="btn ghost" id="wf_scan">Scan</button></div>
+        </div>
+        <div class="form2">
+          <label>Password<input id="wf_pass" type="password" placeholder="WiFi password"></label>
+          <div class="endbtn"><button class="btn primary" id="wf_connect">Connect</button></div>
+        </div>
+        <p class="msg" id="wf_msg"></p>
+      </div>
+      <div class="card tabpane hidden" data-pane="security">
+        <div class="toggle-row">
+          <div><b>Enable Web Authentication</b><p>Require login to access the web interface</p></div>
+          <label class="switch"><input type="checkbox" id="se_en"><span class="slider"></span></label>
+        </div>
+        <div class="form2">
+          <label>Username<input id="se_user" placeholder="admin"></label>
+          <label>Password<input id="se_pass" type="password" placeholder="•••••• (unchanged)"></label>
+        </div>
+        <div class="actions"><button class="btn primary" id="se_save">Save &amp; Apply changes</button>
+          <span class="msg" id="se_msg"></span></div>
+      </div>
+    </section>
+
+    <!-- OTA -->
+    <section class="page hidden" id="page-ota">
+      <h1>OTA Update</h1><p class="sub">Update firmware and filesystem over-the-air.</p>
+      <div class="card">
+        <div class="card-head"><span class="ic teal">▣</span><div><h2>Device Information</h2><p>Current firmware and flash status</p></div></div>
+        <div class="strip">
+          <div><small>Current Version</small><b id="o_fw">–</b></div>
+          <div><small>Chip Model</small><b id="o_chip">–</b></div>
+          <div><small>Free Heap</small><b id="o_heap">–</b></div>
+          <div><small>Last Flash</small><b id="o_last">–</b></div>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="card-head"><span class="ic pink">⬇</span><div><h2>Firmware</h2><p>Upload compiled firmware binary</p></div></div>
+          <label class="full">Firmware File (.bin)<input type="file" id="o_fwfile" accept=".bin"></label>
+          <button class="btn wide" id="o_fwup">⬆ Upload Firmware</button>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="ic pink">▤</span><div><h2>Filesystem</h2><p>Upload LittleFS binary</p></div></div>
+          <label class="full">LittleFS File (.bin)<input type="file" id="o_fsfile" accept=".bin"></label>
+          <button class="btn wide" id="o_fsup">⬆ Upload LittleFS</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="rowhead">
+          <h2>Upload Log</h2>
+          <button class="btn ghost" id="o_reboot">↻ Reboot</button>
+        </div>
+        <p class="sub" style="margin:.3rem 0 0">A firmware flash reboots automatically; a LittleFS flash needs a manual reboot to apply.</p>
+        <progress id="o_prog" value="0" max="100"></progress>
+        <div class="uplog" id="o_log"><span class="empty">No log entries yet</span></div>
+      </div>
+    </section>
+
+    <!-- LOGS -->
+    <section class="page hidden" id="page-logs">
+      <h1>System Logs</h1><p class="sub">Real-time device logs via WebSocket.</p>
+      <div class="card">
+        <div class="logbar">
+          <input id="lg_search" class="search" placeholder="Search logs…">
+          <label class="lvlsel">Min level
+            <select id="lg_level">
+              <option value="V">VERBOSE</option><option value="D">DEBUG</option>
+              <option value="I" selected>INFO</option><option value="W">WARN</option><option value="E">ERROR</option>
+            </select>
+          </label>
+        </div>
+        <div class="logbar">
+          <div class="chips" id="lg_chips">
+            <button class="chip on" data-lvl="E">ERROR</button>
+            <button class="chip on" data-lvl="W">WARN</button>
+            <button class="chip on" data-lvl="I">INFO</button>
+            <button class="chip on" data-lvl="D">DEBUG</button>
+            <button class="chip on" data-lvl="V">VERBOSE</button>
+          </div>
+          <div class="logbar-right">
+            <label class="switch sm"><input type="checkbox" id="lg_auto" checked><span class="slider"></span></label>
+            <span class="muted">Auto-scroll</span>
+            <button class="btn ghost sm" id="lg_export">⬇ Export</button>
+            <button class="btn ghost sm" id="lg_clear">🗑 Clear</button>
+          </div>
+        </div>
+        <div class="loghead"><b>Live Logs</b> <span class="count" id="lg_count">0</span> <span class="wsstate" id="lg_ws">connecting…</span></div>
+        <div class="logview" id="lg_view"><div class="empty">No logs to display</div></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
