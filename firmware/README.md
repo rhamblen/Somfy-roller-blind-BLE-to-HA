@@ -38,7 +38,12 @@ the web UI (sidebar footer, Info page, OTA page) and `/api/info` — bump it the
 cutting a release, and keep `docs/project-plan.md` / `docs/ai-context.md` / `CHANGELOG.md`
 in sync (see the versioning note in `docs/ai-context.md`).
 
-Prebuilt bins are collected in [`dist/`](dist/). A release ships **three bins**:
+Prebuilt bins are collected in [`dist/`](dist/). **Every build produces three bins** —
+build them all in one shot with:
+
+```
+pwsh firmware/build_dist.ps1
+```
 
 | File | Use |
 | ---- | --- |
@@ -50,28 +55,16 @@ Prebuilt bins are collected in [`dist/`](dist/). A release ships **three bins**:
 serial). `-littlefs-` is `.pio/build/esp32dev/littlefs.bin` from `pio run -t buildfs`.
 `-full-` is bootloader + partition table + app **and the LittleFS image** merged into one
 image that flashes at offset `0x0` — a single USB flash of `-full-` alone is enough to get
-the complete web UI on first boot, no separate filesystem upload needed. Merge recipe:
+the complete web UI on first boot, no separate filesystem upload needed.
 
-```
-esptool.py --chip esp32 merge_bin --flash_mode dio --flash_freq 40m --flash_size 4MB \
-  -o dist/somfy-ble-esp32dev-full-vX.Y.Z.bin \
-  0x1000   .pio/build/esp32dev/bootloader.bin \
-  0x8000   .pio/build/esp32dev/partitions.bin \
-  0xe000   <arduino-esp32 core>/tools/partitions/boot_app0.bin \
-  0x10000  .pio/build/esp32dev/firmware.bin \
-  0x290000 .pio/build/esp32dev/littlefs.bin
-```
-
-Offsets for bootloader/partitions/boot_app0/app come from `pio run -t upload -v` (prints the
-underlying `esptool.py write_flash` command). The LittleFS offset (`0x290000`) is the
-`spiffs`-subtype partition's start address in the partition table — decode
-`.pio/build/esp32dev/partitions.bin` to confirm it if the partition scheme ever changes:
-```
-python <arduino-esp32 core>/tools/gen_esp32part.py .pio/build/esp32dev/partitions.bin
-```
-**Without the `0x290000 littlefs.bin` entry, `-full-` boots with an empty filesystem and only
-the plain-text OTA recovery page appears** — not the real web UI. (This bit us on the very
-first hardware test: v0.1.0's initial `-full-` build omitted it.)
+`build_dist.ps1` reads the version straight out of `platformio.ini`'s `FW_VERSION` (so the
+filename can never drift from what's embedded in the binary) and **decodes the actual
+partition table** (`gen_esp32part.py`) for the app and LittleFS offsets on every run, rather
+than hardcoding them — a partition-scheme change can't silently produce a broken `-full-`
+image again. (**Without the LittleFS entry in the merge, `-full-` boots with an empty
+filesystem and only the plain-text OTA recovery page appears, not the real web UI** — this
+bit us on the very first hardware test, v0.1.0's initial hand-built `-full-` omitted it;
+that's exactly why this is a script now instead of a manual `esptool merge_bin` command.)
 
 `dist/*.bin` is gitignored — build it, don't commit it; attach to a GitHub release when one
 is cut.
