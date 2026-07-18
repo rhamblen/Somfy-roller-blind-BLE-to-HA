@@ -92,6 +92,15 @@ In NodeMCU-PyFlasher: select the `-full-` bin, address `0x0`, flash.
 
 ## Update over the air (every time after the first)
 
+> **Exception: if `board_build.partitions` changed since the device's last flash, OTA cannot
+> apply it — do a full USB reflash instead (see above).** OTA only ever writes into the app/FS
+> slots that already exist on the chip; the partition table itself is a fixed flash region OTA
+> never touches. This bit us going from v0.1.1 to v0.1.2 (switched to `min_spiffs.csv`): the
+> `-ota-` firmware upload failed "Not Enough Space" because it's sized for the new, larger app
+> slot, which doesn't exist yet on a device still running the old table. The filesystem upload
+> "succeeding" in that same session was coincidence (new image happened to be smaller than the
+> old partition), not evidence OTA can partially apply a partition change.
+
 The **OTA Update** page at `http://somfy-ble.local/` shows the installed version, chip,
 last flash, and two uploaders — **Firmware** and **Filesystem (LittleFS)** — with an
 upload log.

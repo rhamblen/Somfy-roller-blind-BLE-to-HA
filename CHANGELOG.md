@@ -20,6 +20,14 @@ All notable changes to this project are documented here. Format follows
   app partition (103.2%). Switched to `min_spiffs.csv` (~1.9 MB per OTA slot,
   128 KB LittleFS — plenty for the ~60 KB web UI).
 
+### Migration note
+- **This release changed `board_build.partitions` — any device already flashed
+  with an earlier build must be updated via a full USB reflash of the
+  `-full-` image, not the web OTA page.** OTA can't rewrite the partition
+  table; a v0.1.1 device rejects the v0.1.2 `-ota-` firmware.bin with "Not
+  Enough Space" because it's sized for a partition scheme the device doesn't
+  have yet. See `firmware/README.md`'s Update-over-the-air section.
+
 ## [0.1.1] - 2026-07-18
 
 ### Fixed

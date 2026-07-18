@@ -126,6 +126,18 @@ section for the exact `esptool merge_bin` recipe — another explicit project-ow
   (103.2%) even though NimBLE alone left plenty of room. Fixed via `min_spiffs.csv`; if it happens
   again, shrinking the LittleFS partition further is the first lever (the web UI is ~60 KB), not
   removing a feature.
+- **A `board_build.partitions` change can never reach a device over OTA — only a full USB reflash
+  applies it.** Hit immediately after the v0.1.2 partition-scheme change (`min_spiffs.csv`): a
+  device still running the old (smaller-app-slot) partition table rejected the new, larger
+  `-ota-` firmware.bin with "Not Enough Space" — the OTA firmware upload can only write into the
+  app slot that's *already on the chip*, and the partition table itself is a fixed flash region
+  OTA never touches. The filesystem upload "succeeded" in the same session purely by luck (the
+  new, smaller LittleFS image still fit inside the old, larger filesystem partition) — that's not
+  a sign OTA can partially apply a partition change, just a coincidence of sizes. **Whenever
+  `board_build.partitions` changes, the very next update to any device already in the field must
+  be a full USB flash of the `-full-` image (or `pio run -t upload` + `-t uploadfs`), never the
+  web OTA page** — call this out explicitly to the user, don't let them try OTA first and hit a
+  confusing failure.
 - **mDNS: `WebUI::begin()` always calls `MDNS.begin()` first, unconditionally** — even with
   HomeKit enabled. Deferring mDNS init to HomeSpan instead hangs (HomeSpan's `mdns_init()` runs on
   its background poll task and never returns) — this is the inverse of what you'd guess from "who
