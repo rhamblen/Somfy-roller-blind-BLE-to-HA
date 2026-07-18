@@ -50,6 +50,9 @@ Phased roadmap. See [project-brief.md](project-brief.md) for the full spec and
   (missing LittleFS in the `-full-` image; a WiFi/BLE coexistence crash) — see CHANGELOG v0.1.1.
   HomeKit pairing itself is unverified (no motors yet to make it meaningful) — verify once Phase
   1-3 land real motors, don't block on it now.
+- **Released:** [v0.1.2](https://github.com/rhamblen/Somfy-roller-blind-BLE-to-HA/releases/tag/v0.1.2)
+  on 2026-07-18 — first GitHub Release, per the section-completion release policy
+  (`docs/ai-context.md` Versioning). Phase S is closed; Phase 1 starts at v0.2.0.
 
 ## Phase 1 — BLE bring-up (v0.2.0)
 
