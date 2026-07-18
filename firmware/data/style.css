@@ -94,6 +94,12 @@ input[type=file]{padding:8px}
 .pill{display:inline-flex;gap:8px;align-items:center;background:var(--row);border:1px solid var(--line);
   border-radius:8px;padding:9px 13px;margin-bottom:16px;font-weight:600;font-size:.85rem;color:var(--green)}
 
+/* HomeKit pairing QR (white quiet zone so the Home app camera locks on) */
+.qrbox{display:flex;gap:18px;align-items:center;margin:14px 0 4px}
+.qrbox #hk_qr{background:#fff;padding:10px;border-radius:10px;line-height:0;flex:0 0 auto}
+.qrbox p{color:var(--muted);font-size:.85rem;margin:0}
+.qrbox b{color:var(--txt);font-size:1.05rem;letter-spacing:.06em}
+
 .muted{color:var(--muted)}
 .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.8rem;font-weight:500;word-break:break-all}
 

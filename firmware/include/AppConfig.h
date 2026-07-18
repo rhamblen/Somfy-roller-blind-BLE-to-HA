@@ -40,8 +40,17 @@ String   authUser();
 String   authPass();
 void     setAuth(bool enabled, const String &user, const String &pass);
 
-// Clear all app settings (device name, MQTT, auth) to defaults. Does NOT touch WiFi
-// credentials (WiFiManager's own NVS namespace) or paired motors (Motors' own
+// ---- HomeKit / Apple Home (System > HomeKit tab) ----
+// Bridge name defaults to the device name. Setup code is 8 digits; the default is
+// 748-88-377 — "SHUTTERS" on a phone keypad, carried over unchanged from the Shutter
+// Hub (this project doesn't need its own mnemonic; any distinct non-trivial code works).
+bool     hkEnabled();
+String   hkBridgeName();                        // resolved (never blank)
+String   hkSetupCode();                         // digits only, e.g. "74888377"
+void     setHomeKit(bool enabled, const String &name, const String &code);
+
+// Clear all app settings (device name, MQTT, auth, HomeKit) to defaults. Does NOT touch
+// WiFi credentials (WiFiManager's own NVS namespace) or paired motors (Motors' own
 // namespace). Caller reboots.
 void     factoryReset();
 }

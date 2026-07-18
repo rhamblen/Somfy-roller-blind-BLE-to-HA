@@ -28,21 +28,28 @@ Phased roadmap. See [project-brief.md](project-brief.md) for the full spec and
 
 ---
 
-## Phase S — Firmware framework scaffold (v0.1.0) ☑
+## Phase S — Firmware framework scaffold (v0.1.0 → v0.1.2) ☑
 
 - **Objective:** a buildable base image with on-device WiFi setup, browser control, and OTA,
   carried over from the Shutter Hub project, before any BLE work.
-- **What we built:** PlatformIO project (`esp32dev`, Arduino Core); WiFiManager AP
-  `Somfy-BLE-Setup` + captive portal storing creds in NVS; mDNS; ESPAsyncWebServer + LittleFS
-  single-page UI shell with a live log WebSocket; custom dual-target (`firmware`/`filesystem`)
-  OTA updater decoupled from reboot; MQTT client scaffold (`Mqtt` module, no discovery yet — no
-  motors configured); stub `Motors` (empty NVS-backed list) and `SomfyBle` (NimBLE wrapper, calls
-  are TODO) modules wired into `main.cpp` so the shape is there for Phase 1.
+- **What we built:** PlatformIO project (`esp32dev`, Arduino Core, `min_spiffs.csv` partitions);
+  WiFiManager AP `Somfy-BLE-Setup` + captive portal storing creds in NVS; mDNS; ESPAsyncWebServer
+  + LittleFS single-page UI shell with a live log WebSocket; custom dual-target
+  (`firmware`/`filesystem`) OTA updater decoupled from reboot; MQTT client scaffold (`Mqtt`
+  module, no discovery yet — no motors configured); stub `Motors` (empty NVS-backed list) and
+  `SomfyBle` (NimBLE wrapper, calls are TODO) modules wired into `main.cpp` so the shape is there
+  for Phase 1; **Apple HomeKit bridge** (`HomeKit` module, HomeSpan, vendored patch) exposing one
+  Window Covering per paired motor — see
+  [decisions/0005-apple-homekit-homespan.md](decisions/0005-apple-homekit-homespan.md).
+  `firmware/build_dist.ps1` builds all three release bins in one step.
 - **Why:** re-solving WiFi provisioning / safe OTA / a live web UI from scratch would waste effort
   the Shutter Hub project already spent — see
   [decisions/0001-framework-reuse.md](decisions/0001-framework-reuse.md).
-- **Exit criteria:** ☑ compiles; ☐ flashed to a spare ESP32 DevKit and verified end-to-end
-  (WiFi join, web UI loads, OTA round-trip) — do this before starting Phase 1.
+- **Exit criteria:** ☑ compiles; ☑ flashed to a spare ESP32 DevKit and verified end-to-end (WiFi
+  join, web UI loads over the home network) on 2026-07-18 — two hardware bugs found and fixed
+  (missing LittleFS in the `-full-` image; a WiFi/BLE coexistence crash) — see CHANGELOG v0.1.1.
+  HomeKit pairing itself is unverified (no motors yet to make it meaningful) — verify once Phase
+  1-3 land real motors, don't block on it now.
 
 ## Phase 1 — BLE bring-up (v0.2.0)
 

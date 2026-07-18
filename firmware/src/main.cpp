@@ -8,6 +8,7 @@
 //   Ota        custom firmware + LittleFS update                 [real]
 //   Motors     per-motor definitions + calibration (NVS)         [stub, Phase 1-2]
 //   Mqtt       HA covers + discovery + state                     [stub, Phase 4]
+//   HomeKit    HomeSpan bridge (Window Covering per motor)        [real, position model stub]
 //   SomfyBle   connect-on-demand BLE client (NimBLE)              [stub, Phase 1]
 //
 // Reuses the ESP32 Smart Shutter Hub's firmware framework wholesale for everything
@@ -23,6 +24,7 @@
 #include "WebUI.h"
 #include "Motors.h"
 #include "Mqtt.h"
+#include "HomeKit.h"
 #include "SomfyBle.h"
 
 #ifndef FW_VERSION
@@ -48,6 +50,7 @@ void setup() {
 
   Motors::begin();         // load paired motors + calibration from NVS (empty for now)
   Mqtt::begin();           // MQTT client (no discovery until motors exist)
+  HomeKit::begin();        // HomeSpan bridge, if enabled (mDNS must already be up — see WebUI)
   SomfyBle::begin();       // NimBLE init (connect-on-demand — no persistent link)
 
   LOGI("main", "ready");
@@ -56,6 +59,7 @@ void setup() {
 void loop() {
   WebUI::loop();
   Mqtt::loop();             // pump MQTT client + non-blocking reconnect
+  HomeKit::loop();          // deferred pairing reset only (HAP itself polls on its own task)
   SomfyBle::loop();         // pump any pending async BLE work
   delay(5);
 }

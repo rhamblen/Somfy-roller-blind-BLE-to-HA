@@ -5,6 +5,7 @@
 #include "Ota.h"
 #include "Mqtt.h"
 #include "Motors.h"
+#include "HomeKit.h"
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <LittleFS.h>
@@ -78,9 +79,37 @@ static String dashInfoJson() {
     j += "{\"name\":\"" + jesc(Motors::nameAt(i)) + "\",\"mac\":\"" + jesc(Motors::macAt(i)) +
          "\",\"calibrated\":" + String(Motors::calibratedAt(i) ? "true" : "false") + "}";
   }
-  j += "]";
+  j += "],";
+  j += "\"homekit\":{\"enabled\":" + String(AppConfig::hkEnabled() ? "true" : "false") +
+       ",\"running\":" + String(HomeKit::running() ? "true" : "false") +
+       ",\"paired\":"  + String(HomeKit::paired() ? "true" : "false") +
+       ",\"controllers\":" + String(HomeKit::controllers()) + "}";
   j += "}";
   return j;
+}
+
+static String hkConfigJson() {
+  String j = "{";
+  j += "\"enabled\":" + String(AppConfig::hkEnabled() ? "true" : "false") + ",";
+  j += "\"name\":\"" + jesc(AppConfig::hkBridgeName()) + "\",";
+  j += "\"code\":\"" + AppConfig::hkSetupCode() + "\",";
+  j += "\"running\":" + String(HomeKit::running() ? "true" : "false") + ",";
+  j += "\"paired\":" + String(HomeKit::paired() ? "true" : "false") + ",";
+  j += "\"controllers\":" + String(HomeKit::controllers());
+  j += "}";
+  return j;
+}
+
+// Apple rejects trivial pairing codes; enforce the same list so a code that HomeSpan
+// would refuse can never be saved. 8 digits, not all-same, not 12345678/87654321.
+static bool validSetupCode(const String &c) {
+  if (c.length() != 8) return false;
+  bool allSame = true;
+  for (size_t i = 0; i < 8; i++) {
+    if (c[i] < '0' || c[i] > '9') return false;
+    if (c[i] != c[0]) allSame = false;
+  }
+  return !allSame && c != "12345678" && c != "87654321";
 }
 
 static String mqttConfigJson() {
@@ -146,9 +175,20 @@ namespace WebUI {
 void begin() {
   String host = AppConfig::deviceName();
 
+  // mDNS ownership: HomeSpan and Arduino ESPmDNS share ONE underlying responder. We initialise
+  // it HERE, on the main thread, for BOTH modes — carried over verbatim from the Shutter Hub,
+  // which learned this the hard way (its v0.7.0 bug): deferring mDNS init to HomeSpan whenever
+  // HomeKit was enabled hung, because HomeSpan calls mdns_init() from its background autoPoll
+  // task, and that call never returned — the responder never came up (no hostname, no _hap/
+  // _http), so the HAP server on port 1201 never started and Home could neither discover nor
+  // pair. Bringing mDNS up on the main thread is the path that always works. HomeSpan's own
+  // mdns_init() (inside homeSpan.begin(), called later from HomeKit::begin()) then returns
+  // ESP_ERR_INVALID_STATE immediately — a cheap no-op, not a hang — and just ADDS _hap._tcp
+  // on top of the responder we already started.
   if (MDNS.begin(host.c_str())) {
     MDNS.addService("http", "tcp", 80);
-    LOGI("mdns", "http://%s.local", host.c_str());
+    LOGI("mdns", "http://%s.local%s", host.c_str(),
+         AppConfig::hkEnabled() ? " (HomeSpan will add _hap._tcp)" : "");
   } else {
     LOGW("mdns", "start failed");
   }
@@ -245,6 +285,38 @@ void begin() {
                     ? r->getParam("pass", true)->value() : AppConfig::authPass();
     AppConfig::setAuth(en, user, pass);
     r->send(200, "application/json", "{\"ok\":true}");
+  });
+
+  // ---- HomeKit (System > HomeKit sub-tab — config + HomeSpan bridge state) ----
+  server.on("/api/homekit", HTTP_GET, [](AsyncWebServerRequest *r) {
+    if (!guard(r)) return;
+    r->send(200, "application/json", hkConfigJson());
+  });
+  server.on("/api/homekit", HTTP_POST, [](AsyncWebServerRequest *r) {
+    if (!guard(r)) return;
+    bool   en   = r->hasParam("enabled", true) &&
+                  (r->getParam("enabled", true)->value() == "true" ||
+                   r->getParam("enabled", true)->value() == "1");
+    String name = r->hasParam("name", true) ? r->getParam("name", true)->value() : AppConfig::hkBridgeName();
+    String code = r->hasParam("code", true) ? r->getParam("code", true)->value() : AppConfig::hkSetupCode();
+    if (!validSetupCode(code)) {
+      r->send(400, "application/json",
+        "{\"error\":\"setup code must be 8 digits and not trivial (all-same, 12345678, 87654321)\"}");
+      return;
+    }
+    AppConfig::setHomeKit(en, name, code);
+    LOGI("homekit", "config saved: enabled=%d name='%s' — REBOOT to apply (bridge starts at boot)",
+         en, AppConfig::hkBridgeName().c_str());
+    r->send(200, "application/json", hkConfigJson());
+  });
+  server.on("/api/homekit/reset-pairings", HTTP_POST, [](AsyncWebServerRequest *r) {
+    if (!guard(r)) return;
+    if (!HomeKit::resetPairings()) {
+      r->send(409, "application/json",
+        "{\"error\":\"HomeKit bridge isn't running — enable it and reboot first\"}");
+      return;
+    }
+    r->send(200, "application/json", "{\"ok\":true,\"msg\":\"pairings cleared — re-pair from the Home app\"}");
   });
 
   // ---- WiFi (feeds the System > WiFi sub-tab) ----

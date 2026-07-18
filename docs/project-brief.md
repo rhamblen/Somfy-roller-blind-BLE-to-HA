@@ -51,8 +51,13 @@ project uses (see its [0005-mqtt-command-structure.md](https://github.com/rhambl
 for the pattern this is modeled on) — adapted for BLE's connect-on-demand model
 ([decisions/0003](decisions/0003-connect-on-demand-ble.md)).
 
+Each paired motor is also exposed to **Apple HomeKit** as a Window Covering accessory via a
+HomeSpan bridge, same pattern as the Shutter Hub's
+([decisions/0005-apple-homekit-homespan.md](decisions/0005-apple-homekit-homespan.md)) — HA and
+Home both read/write the same `Motors::lastPct` assumed-state, so they stay in sync with each
+other, not just with the motor.
+
 ## Out of scope (for now)
 
 - Zigbee interoperability (this project never joins the Zigbee network).
 - Tilt/venetian-specific characteristics (roller blinds only, initially).
-- Apple HomeKit (no HomeSpan bridge — MQTT/HA only, unless a later phase asks for it).

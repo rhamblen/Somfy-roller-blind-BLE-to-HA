@@ -4,13 +4,19 @@ PlatformIO project (Arduino Core, `esp32dev`). Firmware framework carried over f
 ESP32 Smart Shutter Hub — see [../docs/decisions/0001-framework-reuse.md](../docs/decisions/0001-framework-reuse.md).
 See [../docs/project-plan.md](../docs/project-plan.md) for the phased roadmap.
 
-## What this version does (v0.1.0 — Phase S)
+## What this version does (v0.1.2 — Phase S)
 
 On-device WiFi setup, advertises `somfy-ble.local` over mDNS, and serves a single-page web
 UI from LittleFS (sidebar: Info · Motors · MQTT · System · OTA · Logs) over a JSON/REST API.
 A live log stream runs over WebSocket (`/ws/logs`). Custom **OTA** flashes firmware and/or
 the LittleFS image independently. `Motors` and `SomfyBle` exist as real-but-empty /
 stubbed modules respectively — BLE bring-up against a real motor is Phase 1.
+
+**Apple HomeKit**: a HomeSpan bridge exposes each paired motor as a Window Covering,
+configured under **System → HomeKit** — see
+[../docs/decisions/0005-apple-homekit-homespan.md](../docs/decisions/0005-apple-homekit-homespan.md).
+It runs on its own FreeRTOS task, so HAP never stalls the web server or MQTT. Uses a vendored
+HomeSpan patch (`patches/`, applied pre-build) for a known 1.9.1 pairing bug.
 
 ## WiFi setup (on-device — no credentials in the binary)
 
@@ -102,17 +108,20 @@ upload log.
 firmware/
 ├─ platformio.ini              board/env + libraries + build flags
 ├─ include/                    module headers (*.h)
-├─ data/                       LittleFS web UI (index.html, style.css, app.js)
+├─ data/                       LittleFS web UI (index.html, style.css, app.js, qrcode.min.js)
+├─ patches/                    vendored HomeSpan 1.9.1 patch, applied pre-build
 ├─ src/
 │  ├─ main.cpp                 thin entry point — wires the modules together
-│  ├─ AppConfig.cpp            persisted settings: device, MQTT, web auth (NVS)
+│  ├─ AppConfig.cpp            persisted settings: device, MQTT, web auth, HomeKit (NVS)
 │  ├─ Diagnostics.cpp          logging + log ring buffer + WS sink, /info
 │  ├─ WiFiSetup.cpp            WiFiManager AP + captive portal
 │  ├─ WebUI.cpp                static SPA + JSON API + /ws/logs + mDNS
 │  ├─ Ota.cpp                  custom firmware + LittleFS OTA
-│  ├─ Motors.cpp               per-motor definitions + calibration (NVS)      [Phase 1-2]
+│  ├─ Motors.cpp               per-motor definitions + calibration + assumed state (NVS) [Phase 1-2]
 │  ├─ Mqtt.cpp                 hub diagnostics now; HA covers + discovery     [Phase 4]
+│  ├─ HomeKit.cpp              HomeSpan bridge — one Window Covering per motor
 │  └─ SomfyBle.cpp             connect-on-demand BLE client (NimBLE)          [Phase 1]
+├─ build_dist.ps1              builds all 3 dist/ release bins in one step
 └─ dist/                       prebuilt release artifacts (bins gitignored)
 ```
 

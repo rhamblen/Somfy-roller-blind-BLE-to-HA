@@ -14,15 +14,17 @@
 - **Motor count is configuration, not code**, same convention as the Shutter Hub's shutter count —
   never hard-code a specific number of motors; cap with a `Motors::MAX` constant, raise it if
   needed.
-- **Flash budget is a first-class constraint.** The non-BLE half of the stack alone runs the
-  Shutter Hub to ~91–92% flash on the same board family; the BLE stack choice
-  ([decisions/0002](decisions/0002-ble-stack-nimble.md)) was made specifically to leave headroom.
+- **Flash budget is a first-class constraint, not a one-time check.** The BLE stack choice
+  ([decisions/0002](decisions/0002-ble-stack-nimble.md)) left headroom on the default 1.28 MB OTA
+  partition, but adding HomeSpan ([decisions/0005](decisions/0005-apple-homekit-homespan.md))
+  overflowed it anyway (103.2%) — fixed by switching to `min_spiffs.csv` (~1.9 MB per OTA slot).
+  Re-check `pio run`'s flash % after adding any new library, every time.
 
 ## Topology
 
 ```
 Home Assistant  <—MQTT (cover discovery)—>  ESP32 (this project)  <—BLE, connect-on-demand—>  Somfy motor(s)
-                                                    |
+Apple Home      <—HomeKit (HAP, Window Covering)—^      |
                                               local Web UI
                                           (config, calibration, OTA)
 ```
@@ -41,10 +43,11 @@ LittleFS SPA web UI):
 | `Diagnostics` | Logging, `/info`, reboot scheduling | Verbatim |
 | `WiFiSetup` | WiFiManager captive-portal provisioning | Verbatim (AP name changed) |
 | `Ota` | Dual-target (`firmware`/`filesystem`) OTA over `Update.h`, decoupled from reboot | Verbatim |
-| `AppConfig` | NVS-backed settings (device name, MQTT, web auth, Motors) | Adapted — dropped servo/HomeKit/light-sensor fields |
+| `AppConfig` | NVS-backed settings (device name, MQTT, web auth, HomeKit) | Adapted — dropped servo/light-sensor fields, kept HomeKit |
 | `WebUI` | ESPAsyncWebServer + LittleFS SPA + `/ws/logs` + JSON REST + recovery page | Adapted — Motors status/routes replace Shutters/ServoController |
 | `Mqtt` | PubSubClient + HA discovery, one `cover` per device | Adapted — driven by `Motors` instead of `Shutters` |
-| `Motors` | NVS-backed list of paired motors + calibration | New — ported pattern from `Shutters.h` |
+| `HomeKit` | HomeSpan bridge, one Window Covering per motor | Adapted — driven by `Motors`/`SomfyBle`; position model differs (assumed state, no live feed) — see [0005](decisions/0005-apple-homekit-homespan.md) |
+| `Motors` | NVS-backed list of paired motors + calibration + assumed position | New — ported pattern from `Shutters.h` |
 | `SomfyBle` | Connect-on-demand BLE client: connect/auth/goto/stop | New — protocol ported from `vendor/somfy-sonesse2-ble-calib-tool-esp`, translated to NimBLE ([0002](decisions/0002-ble-stack-nimble.md)) |
 
 ## Open trade-offs

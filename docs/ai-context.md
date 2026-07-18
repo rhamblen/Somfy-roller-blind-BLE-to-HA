@@ -31,8 +31,10 @@ BLE-specific.
 | `docs/project-plan.md` | Phased roadmap + status table + open decisions |
 | `docs/architecture.md` | Principles, topology, module map, open trade-offs |
 | `docs/inventory.md` | Motor facts (model, MAC, PIN source) — stub until hardware is confirmed |
-| `docs/decisions/0001–0004` | ADRs: framework reuse, NimBLE stack choice, connect-on-demand BLE, vendoring/credit |
-| `firmware/` | PlatformIO project (Arduino core, `esp32dev` board) |
+| `docs/decisions/0001–0005` | ADRs: framework reuse, NimBLE stack choice, connect-on-demand BLE, vendoring/credit, Apple HomeKit/HomeSpan |
+| `firmware/` | PlatformIO project (Arduino core, `esp32dev` board, `min_spiffs.csv` partitions) |
+| `firmware/build_dist.ps1` | Builds all 3 `dist/` release bins (full/ota/littlefs) in one step |
+| `firmware/patches/` | Vendored HomeSpan 1.9.1 patch (newlib-nano `%m` sscanf fix) — applied pre-build |
 | `firmware/data/` | LittleFS web UI (served by `WebUI`) |
 | `vendor/somfy-sonesse2-ble-calib-tool-esp` | magik6k's BLE protocol reference tool — **git submodule, not compiled** (see [0004](decisions/0004-vendoring-credit.md)) |
 | `CHANGELOG.md` | Keep-a-Changelog; update every phase |
@@ -57,15 +59,21 @@ BLE-specific.
 - **Firmware framework:** carried over from the Shutter Hub project
   ([decisions/0001](decisions/0001-framework-reuse.md)) — WiFiManager captive portal,
   ESPAsyncWebServer + LittleFS SPA + `/ws/logs`, custom dual-target `Update.h` OTA (decoupled from
-  reboot), PubSubClient + HA MQTT discovery, NVS `AppConfig`. No HomeKit/HomeSpan, no light
-  sensor, no servo backend — those modules were not carried over.
+  reboot), PubSubClient + HA MQTT discovery, NVS `AppConfig`, and an **Apple HomeKit bridge**
+  (HomeSpan, one Window Covering per motor — [decisions/0005](decisions/0005-apple-homekit-homespan.md)).
+  No light sensor, no servo backend — those modules were not carried over (no analog).
+- **Flash partitions:** `min_spiffs.csv` (~1.9 MB per OTA app slot, 128 KB LittleFS), **not** the
+  board default (1.28 MB app / 1.4 MB FS) — HomeSpan + NimBLE + the rest of the stack overflowed
+  the default (103.2%). `firmware/build_dist.ps1` decodes the real partition table every run, so
+  it needs no changes when this scheme changes again.
 
 ## Build phases
 
-**S** (v0.1.0, done): framework scaffold — WiFi/WebUI/OTA/MQTT-client build and boot; `Motors` and
-`SomfyBle` exist as stub modules (empty list / TODO calls) so the shape is in place. Verified with
-`pio run -e esp32dev` (75.2% flash / 18.6% RAM) and `-t buildfs`; **not yet flashed to real
-hardware** — do that before starting Phase 1. Remaining:
+**S** (v0.1.2, done): framework scaffold — WiFi/WebUI/OTA/MQTT-client/HomeKit build and boot;
+`Motors` and `SomfyBle` exist as stub modules (empty list / TODO calls) so the shape is in place
+for real motors. Verified end-to-end on real hardware (2026-07-18): WiFi join, web UI over the
+home network, HomeKit bridge init — all stable after fixing two hardware bugs (see CHANGELOG
+v0.1.1) and a flash overflow (v0.1.2, [0005](decisions/0005-apple-homekit-homespan.md)). Remaining:
 **1** (v0.2.0) BLE bring-up (real motor, resolve position-readback question) → **2** (v0.3.0)
 Motors config + calibration → **3** (v0.4.0) Motors web UI → **4** (v0.5.0) MQTT/HA cover
 integration. See [project-plan.md](project-plan.md) for detail.
@@ -78,6 +86,13 @@ OTA page) and `/api/info` — so the running version is always visible without a
 This deviates from the phase→version mapping convention in the user's global CLAUDE.md (which
 would start Phase S at v0.0.x); that deviation is deliberate for this repo, per an explicit
 instruction from the project owner.
+
+**Scheme is `0.x.y`:** `x` is the section/phase (bump when starting a new phase from
+`project-plan.md` — S=1, Phase 1=2, Phase 2=3, …); `y` is the build increment within that
+section (bump on each meaningful firmware build/fix during that phase, e.g. v0.1.0 → v0.1.1).
+**Completing a section requires an actual GitHub Release** (tag + `gh release create` / the REST
+flow — see the global CLAUDE.md release process), not just a push to `main` — pushing commits
+during a phase is normal and doesn't need a release each time.
 
 Every release also builds **three** `firmware/dist/` bins (gitignored, built on demand) —
 `-full-` (merged, for a NodeMCU-style USB flash tool), `-ota-` (plain firmware, for the web
@@ -106,3 +121,15 @@ section for the exact `esptool merge_bin` recipe — another explicit project-ow
   see `.gitignore`.
 - Don't hold a BLE connection open across commands or across multiple motors — see
   [decisions/0003](decisions/0003-connect-on-demand-ble.md).
+- **Flash budget: check `pio run`'s flash % after adding any library, every time — don't assume
+  last session's headroom still holds.** Adding HomeSpan overflowed the default partition scheme
+  (103.2%) even though NimBLE alone left plenty of room. Fixed via `min_spiffs.csv`; if it happens
+  again, shrinking the LittleFS partition further is the first lever (the web UI is ~60 KB), not
+  removing a feature.
+- **mDNS: `WebUI::begin()` always calls `MDNS.begin()` first, unconditionally** — even with
+  HomeKit enabled. Deferring mDNS init to HomeSpan instead hangs (HomeSpan's `mdns_init()` runs on
+  its background poll task and never returns) — this is the inverse of what you'd guess from "who
+  needs mDNS more," and re-deriving it wrong is exactly the Shutter Hub's v0.7.0 bug repeating.
+  See [decisions/0005](decisions/0005-apple-homekit-homespan.md).
+- HomeKit's QR setup ID is `"SOMF"` — set in `HomeKit.cpp`'s `setQRID()` and duplicated in
+  `app.js`'s `hkQrUri()`. If one changes, change both.

@@ -52,6 +52,7 @@
           <div class="kv"><span>WiFi signal</span><b id="i_rssi">–</b></div>
           <div class="kv"><span>Free heap</span><b id="i_heap">–</b></div>
           <div class="kv"><span>MQTT broker</span><b id="i_mqtt">–</b></div>
+          <div class="kv"><span>HomeKit</span><b id="i_hk">–</b></div>
         </div>
       </div>
       <div class="card">
@@ -124,6 +125,7 @@
       <div class="tabs" data-tabs="sys">
         <button class="tab active" data-tab="device"><span>Device</span></button>
         <button class="tab" data-tab="wifi"><span>WiFi</span></button>
+        <button class="tab" data-tab="homekit"><span>HomeKit</span></button>
         <button class="tab" data-tab="security"><span>Security</span></button>
       </div>
       <div class="card tabpane" data-pane="device">
@@ -145,6 +147,33 @@
           <div class="endbtn"><button class="btn primary" id="wf_connect">Connect</button></div>
         </div>
         <p class="msg" id="wf_msg"></p>
+      </div>
+      <div class="card tabpane hidden" data-pane="homekit">
+        <div class="toggle-row">
+          <div><b>Enable HomeKit bridge</b><p>Expose each paired motor as a Window Covering in
+            Apple Home, alongside Home Assistant. Enabling — or adding/removing motors — takes
+            effect after a reboot.</p></div>
+          <label class="switch"><input type="checkbox" id="hk_en"><span class="slider"></span></label>
+        </div>
+        <div class="form2">
+          <label>Bridge name<input id="hk_name" maxlength="32" placeholder="somfy-ble"></label>
+          <label>Setup code<input id="hk_code" inputmode="numeric" maxlength="10" placeholder="748-88-377"></label>
+        </div>
+        <div class="kv"><span>Bridge status</span><b id="hk_run">–</b></div>
+        <div class="kv"><span>Pairing</span><b id="hk_pair">–</b></div>
+        <div class="qrbox hidden" id="hk_qrbox">
+          <div id="hk_qr"></div>
+          <p id="hk_qrcap">Scan with the iPhone camera or the Home app to pair<br><b id="hk_codefmt"></b></p>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="hk_save">Save changes</button>
+          <button class="btn ghost" id="hk_reboot">↻ Reboot to apply</button>
+          <button class="btn ghost" id="hk_rand">⟳ Random code</button>
+          <button class="btn danger" id="hk_reset" disabled>Reset pairings</button>
+          <span class="msg" id="hk_msg"></span>
+        </div>
+        <p class="msg">HomeKit changes — enabling, the setup code, the bridge name, adding/removing
+          motors — only take effect after a reboot. Save, then <b>Reboot to apply</b> before pairing.</p>
       </div>
       <div class="card tabpane hidden" data-pane="security">
         <div class="toggle-row">
@@ -229,6 +258,7 @@
     </section>
   </main>
 </div>
+<script src="/qrcode.min.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

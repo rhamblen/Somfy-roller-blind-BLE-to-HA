@@ -36,4 +36,12 @@ bool   rename(const String &id, const String &name);
 String pinFor(const String &id);                            // for SomfyBle to authenticate with
 bool   setEdge(const String &id, bool openEdge, int pos);    // snapshot open/closed; calibrated once both set
 int    edgePos(const String &id, bool openEdge);             // calibrated open/closed position, or UNSET
+
+// ---- Assumed state (0-100 %, HA convention: 0 = closed) -----------------------
+// BLE is connect-on-demand (docs/decisions/0003-connect-on-demand-ble.md) — there is no
+// live position feed to poll, so both Mqtt and HomeKit report this single shared "last
+// commanded position" rather than each tracking their own. Set after a command SomfyBle
+// reports as successful; UNSET (-1) until the motor has been moved at least once.
+int    lastPct(const String &id);
+void   setLastPct(const String &id, int pct);
 }

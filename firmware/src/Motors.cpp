@@ -17,6 +17,7 @@ struct Motor {
   String pin;                      // 3-byte PIN from the motor label, as decimal text
   int    closedPos = Motors::UNSET;  // 0-32767, per the goto-position characteristic
   int    openPos   = Motors::UNSET;
+  int    lastPct   = Motors::UNSET;  // assumed state, 0-100 (HA convention: 0 = closed)
 };
 
 Motor g_list[Motors::MAX];
@@ -64,6 +65,7 @@ void persist() {
     prefs.putString(("p"  + String(i)).c_str(), m.pin);
     prefs.putInt(("cl" + String(i)).c_str(), m.closedPos);
     prefs.putInt(("op" + String(i)).c_str(), m.openPos);
+    prefs.putInt(("lp" + String(i)).c_str(), m.lastPct);
   }
 }
 
@@ -85,6 +87,7 @@ void begin() {
     m.pin       = prefs.getString(("p"  + String(i)).c_str(), "");
     m.closedPos = prefs.getInt(("cl" + String(i)).c_str(), UNSET);
     m.openPos   = prefs.getInt(("op" + String(i)).c_str(), UNSET);
+    m.lastPct   = prefs.getInt(("lp" + String(i)).c_str(), UNSET);
   }
   LOGI("motors", "loaded %d motor(s)", g_count);
 }
@@ -108,6 +111,7 @@ String listJson() {
     j += ",\"mac\":\""  + jesc(m.mac)  + "\"";
     j += ",\"closedPos\":" + String(m.closedPos);
     j += ",\"openPos\":"   + String(m.openPos);
+    j += ",\"lastPct\":"   + String(m.lastPct);
     j += ",\"calibrated\":" + String(calibrated(m) ? "true" : "false");
     j += "}";   // PIN is never included — write-only from the caller's perspective
   }
@@ -136,7 +140,7 @@ bool remove(const String &id) {
   g_count--;
   // Clear the now-orphaned tail slot's keys so a shrink can't resurrect stale data.
   int tail = g_count;
-  for (const char *p : {"id", "n", "m", "p", "cl", "op"})
+  for (const char *p : {"id", "n", "m", "p", "cl", "op", "lp"})
     prefs.remove((String(p) + String(tail)).c_str());
   persist();
   LOGI("motors", "removed id=%s", id.c_str());
@@ -169,6 +173,18 @@ int edgePos(const String &id, bool openEdge) {
   int i = indexOf(id);
   if (i < 0) return UNSET;
   return openEdge ? g_list[i].openPos : g_list[i].closedPos;
+}
+
+int lastPct(const String &id) {
+  int i = indexOf(id);
+  return i < 0 ? UNSET : g_list[i].lastPct;
+}
+
+void setLastPct(const String &id, int pct) {
+  int i = indexOf(id);
+  if (i < 0) return;
+  g_list[i].lastPct = constrain(pct, 0, 100);
+  persist();
 }
 
 }  // namespace Motors

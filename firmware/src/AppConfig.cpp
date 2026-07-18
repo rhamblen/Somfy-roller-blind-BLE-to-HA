@@ -25,6 +25,11 @@ bool     g_mqHaDisc   = true;
 bool     g_authEn     = false;
 String   g_authUser   = "admin";
 String   g_authPass   = "";
+
+// HomeKit / Apple Home
+bool     g_hkEn       = false;
+String   g_hkName     = "";       // blank => fall back to the device name
+String   g_hkCode     = "74888377";
 }
 
 namespace AppConfig {
@@ -48,6 +53,10 @@ void begin() {
   g_authEn     = prefs.getBool("authEn", false);
   g_authUser   = prefs.getString("authUser", "admin");
   g_authPass   = prefs.getString("authPass", "");
+
+  g_hkEn       = prefs.getBool("hkEn", false);
+  g_hkName     = prefs.getString("hkName", "");
+  g_hkCode     = prefs.getString("hkCode", "74888377");
 
   g_bootCount  = prefs.getUInt("bootCount", 0) + 1;
   prefs.putUInt("bootCount", g_bootCount);
@@ -117,6 +126,19 @@ void setAuth(bool enabled, const String &user, const String &pass) {
   prefs.putBool("authEn", g_authEn);
   prefs.putString("authUser", g_authUser);
   prefs.putString("authPass", g_authPass);
+}
+
+// ---- HomeKit / Apple Home ----
+
+bool   hkEnabled()    { return g_hkEn; }
+String hkBridgeName() { return g_hkName.length() ? g_hkName : deviceName(); }
+String hkSetupCode()  { return g_hkCode.length() == 8 ? g_hkCode : String("74888377"); }
+
+void setHomeKit(bool enabled, const String &name, const String &code) {
+  g_hkEn = enabled; g_hkName = name; g_hkCode = code;
+  prefs.putBool("hkEn", g_hkEn);
+  prefs.putString("hkName", g_hkName);
+  prefs.putString("hkCode", g_hkCode);
 }
 
 void factoryReset() {
