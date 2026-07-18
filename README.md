@@ -53,6 +53,7 @@ per motor), all backed by an NVS `AppConfig`. See
 | [firmware/](firmware/) | ESP32 firmware (PlatformIO, Arduino Core) — build/flash/OTA |
 | [vendor/somfy-sonesse2-ble-calib-tool-esp](vendor/somfy-sonesse2-ble-calib-tool-esp) | magik6k's BLE protocol reference tool (git submodule) |
 | [CHANGELOG.md](CHANGELOG.md) | Change history (Keep a Changelog + SemVer) |
+| [RELEASE_NOTES.md](RELEASE_NOTES.md) | Body of the current GitHub release (rewritten each release) |
 
 ## License & Credits
 
