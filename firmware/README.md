@@ -48,21 +48,33 @@ Prebuilt bins are collected in [`dist/`](dist/). A release ships **three bins**:
 
 `-ota-` is `.pio/build/esp32dev/firmware.bin` as-is (what `pio run -t upload` sends over
 serial). `-littlefs-` is `.pio/build/esp32dev/littlefs.bin` from `pio run -t buildfs`.
-`-full-` is those two merged with the bootloader and partition table into one image that
-flashes at offset `0x0` — the merge recipe:
+`-full-` is bootloader + partition table + app **and the LittleFS image** merged into one
+image that flashes at offset `0x0` — a single USB flash of `-full-` alone is enough to get
+the complete web UI on first boot, no separate filesystem upload needed. Merge recipe:
 
 ```
 esptool.py --chip esp32 merge_bin --flash_mode dio --flash_freq 40m --flash_size 4MB \
   -o dist/somfy-ble-esp32dev-full-vX.Y.Z.bin \
-  0x1000  .pio/build/esp32dev/bootloader.bin \
-  0x8000  .pio/build/esp32dev/partitions.bin \
-  0xe000  <arduino-esp32 core>/tools/partitions/boot_app0.bin \
-  0x10000 .pio/build/esp32dev/firmware.bin
+  0x1000   .pio/build/esp32dev/bootloader.bin \
+  0x8000   .pio/build/esp32dev/partitions.bin \
+  0xe000   <arduino-esp32 core>/tools/partitions/boot_app0.bin \
+  0x10000  .pio/build/esp32dev/firmware.bin \
+  0x290000 .pio/build/esp32dev/littlefs.bin
 ```
 
-(Exact offsets and the `boot_app0.bin` path come from `pio run -t upload -v`, which prints
-the underlying `esptool.py write_flash` command.) `dist/*.bin` is gitignored — build it,
-don't commit it; attach to a GitHub release when one is cut.
+Offsets for bootloader/partitions/boot_app0/app come from `pio run -t upload -v` (prints the
+underlying `esptool.py write_flash` command). The LittleFS offset (`0x290000`) is the
+`spiffs`-subtype partition's start address in the partition table — decode
+`.pio/build/esp32dev/partitions.bin` to confirm it if the partition scheme ever changes:
+```
+python <arduino-esp32 core>/tools/gen_esp32part.py .pio/build/esp32dev/partitions.bin
+```
+**Without the `0x290000 littlefs.bin` entry, `-full-` boots with an empty filesystem and only
+the plain-text OTA recovery page appears** — not the real web UI. (This bit us on the very
+first hardware test: v0.1.0's initial `-full-` build omitted it.)
+
+`dist/*.bin` is gitignored — build it, don't commit it; attach to a GitHub release when one
+is cut.
 
 ## First flash (USB — one time only)
 

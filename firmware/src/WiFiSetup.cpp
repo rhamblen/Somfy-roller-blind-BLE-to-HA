@@ -42,6 +42,12 @@ void connect() {
   // WiFi is set: tear the setup AP down and stay station-only.
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_STA);
+  // Modem sleep back ON now that the portal is done. A classic single-radio ESP32
+  // shares its antenna between WiFi and BLE via a coexistence scheduler that depends
+  // on WiFi power-save being available — leaving sleep off (as we do above, for a
+  // snappy portal) makes SomfyBle::begin()'s NimBLEDevice::init() abort in
+  // coex_core_enable the moment it tries to enable the BT controller.
+  WiFi.setSleep(true);
   LOGI("wifi", "connected to \"%s\": %s (RSSI %d dBm)",
        WiFi.SSID().c_str(), WiFi.localIP().toString().c_str(), WiFi.RSSI());
 }

@@ -86,6 +86,18 @@ section for the exact `esptool merge_bin` recipe — another explicit project-ow
 
 ## Gotchas
 
+- **WiFi/BLE coexistence: never leave `WiFi.setSleep(false)` on past the setup portal.**
+  Root-caused on first hardware test (2026-07-18, v0.1.0): the device booted, joined WiFi, and
+  started the web server fine, then hard-crashed (`abort()` in `coex_core_enable`, decoded via
+  `xtensa-esp32-elf-addr2line` against `firmware.elf`) the moment `SomfyBle::begin()` called
+  `NimBLEDevice::init()` — and kept crash-looping, which looked like "no web page" from the
+  client side even though the server had genuinely started (see the boot log). A classic
+  single-radio ESP32 (WROOM) time-shares one antenna between WiFi and BLE via a coexistence
+  scheduler that depends on WiFi modem sleep being available; `WiFiSetup.cpp` (carried over from
+  the Shutter Hub, which has no BLE) disabled sleep permanently for a snappy captive portal. Fix:
+  `WiFiSetup::connect()` now restores `WiFi.setSleep(true)` right after leaving AP mode, before
+  anything touches BLE. If you ever add another `WiFi.setSleep(false)` call anywhere (e.g. for
+  portal responsiveness), make sure it's re-enabled before `SomfyBle::begin()` runs.
 - The reference tool (`vendor/`) is a single interactive-CLI `.ino`, **not a library** — never try
   to `#include` it directly; port the specific GATT call you need into `SomfyBle`.
 - Clone with `git clone --recurse-submodules`, or `git submodule update --init` afterward, or

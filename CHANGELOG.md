@@ -19,3 +19,14 @@ All notable changes to this project are documented here. Format follows
   (magik6k's Somfy Sonesse2 BLE protocol reference tool, MIT).
 - Repo scaffold: README, LICENSE, docs (`project-brief`, `project-plan`,
   `architecture`, `ai-context`, ADRs 0001–0004, `inventory`).
+
+### Fixed
+- First hardware test found the `-full-` dist image never included the LittleFS
+  partition, so a fresh flash booted with an empty filesystem and only the
+  plain-text OTA recovery page — fixed the `merge_bin` recipe to include it
+  (offset `0x290000`).
+- First hardware test also found `SomfyBle::begin()` hard-crashing on boot
+  (`abort()` in `coex_core_enable`) because `WiFiSetup` left WiFi modem sleep
+  disabled past the setup portal, breaking WiFi/BLE coexistence on the
+  single-radio ESP32-WROOM. `WiFiSetup::connect()` now restores
+  `WiFi.setSleep(true)` before returning. See `docs/ai-context.md` Gotchas.
