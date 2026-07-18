@@ -2,10 +2,16 @@
 # See README.md's Build section for what each one is for and the merge_bin recipe this
 # automates. Run from anywhere; always operates on firmware/ (this script's own folder).
 #
-# Usage: pwsh firmware/build_dist.ps1  [-Env esp32dev]
+# By default, deletes any *other* version's bins already in dist/ once the new ones are
+# built — dist/ is scratch output (gitignored), not an archive, and stale binaries sitting
+# next to the current ones is how you flash the wrong one by accident. Pass -KeepOld to
+# keep every version around instead.
+#
+# Usage: pwsh firmware/build_dist.ps1  [-Env esp32dev] [-KeepOld]
 
 param(
-    [string]$Env = "esp32dev"
+    [string]$Env = "esp32dev",
+    [switch]$KeepOld
 )
 
 $ErrorActionPreference = "Stop"
@@ -66,6 +72,14 @@ if ($LASTEXITCODE -ne 0) { throw "merge_bin failed" }
 
 Copy-Item "$buildDir\firmware.bin" "dist\somfy-ble-$Env-ota-v$version.bin" -Force
 Copy-Item "$buildDir\littlefs.bin" "dist\somfy-ble-$Env-littlefs-v$version.bin" -Force
+
+if (-not $KeepOld) {
+    $stale = Get-ChildItem "dist\*.bin" | Where-Object { $_.Name -notlike "*v$version*" }
+    if ($stale) {
+        Write-Host "-- removing $($stale.Count) old-version bin(s) from dist/ (use -KeepOld to keep them)"
+        $stale | Remove-Item -Force
+    }
+}
 
 Write-Host "`n== dist/ =="
 Get-ChildItem "dist\*v$version*" | Format-Table Name, Length

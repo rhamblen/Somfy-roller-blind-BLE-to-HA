@@ -51,6 +51,11 @@ build them all in one shot with:
 pwsh firmware/build_dist.ps1
 ```
 
+`dist/` is scratch output, not an archive: by default the script **deletes any other
+version's bins already sitting in `dist/`** once the new ones are built, so there's never
+a stale binary next to the current one to flash by mistake. Pass `-KeepOld` to keep every
+version around instead.
+
 | File | Use |
 | ---- | --- |
 | `somfy-ble-esp32dev-full-vX.Y.Z.bin` | first USB flash, merged at `0x0` |
