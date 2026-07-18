@@ -73,10 +73,15 @@ BLE-specific.
 `Motors` and `SomfyBle` exist as stub modules (empty list / TODO calls) so the shape is in place
 for real motors. Verified end-to-end on real hardware (2026-07-18): WiFi join, web UI over the
 home network, HomeKit bridge init — all stable after fixing two hardware bugs (see CHANGELOG
-v0.1.1) and a flash overflow (v0.1.2, [0005](decisions/0005-apple-homekit-homespan.md)). Remaining:
-**1** (v0.2.0) BLE bring-up (real motor, resolve position-readback question) → **2** (v0.3.0)
-Motors config + calibration → **3** (v0.4.0) Motors web UI → **4** (v0.5.0) MQTT/HA cover
-integration. See [project-plan.md](project-plan.md) for detail.
+v0.1.1) and a flash overflow (v0.1.2, [0005](decisions/0005-apple-homekit-homespan.md)). Released
+as [v0.1.2](https://github.com/rhamblen/Somfy-roller-blind-BLE-to-HA/releases/tag/v0.1.2).
+**1** (v0.2.0, code done, **unverified on hardware**): `SomfyBle` is no longer a stub —
+`connectAndGoto/connectAndStop/connectAndIdentify` are real, ported from the vendored reference's
+exact wire protocol to `NimBLEClient`. Motors add/remove/rename + a bench-test bar (Identify/Goto/
+Stop) ship in the web UI's Motors page now, pulled forward from Phase 3. Builds at 69.4% flash /
+22.2% RAM. Position-readback question still open — resolve once a real motor confirms this works.
+Remaining: **2** (v0.3.0) Motors calibration (percent mapping) → **3** (v0.4.0) BLE scan/pairing
+flow → **4** (v0.5.0) MQTT/HA cover integration. See [project-plan.md](project-plan.md).
 
 ## Versioning
 
@@ -145,3 +150,9 @@ section for the exact `esptool merge_bin` recipe — another explicit project-ow
   See [decisions/0005](decisions/0005-apple-homekit-homespan.md).
 - HomeKit's QR setup ID is `"SOMF"` — set in `HomeKit.cpp`'s `setQRID()` and duplicated in
   `app.js`'s `hkQrUri()`. If one changes, change both.
+- **`SomfyBle`'s `NimBLEAddress` assumes a public BLE address** (the reference tool's default
+  too) — if a real motor's connect attempt consistently times out with a correct MAC, try a
+  random address type before assuming the MAC or PIN is wrong. Also: the auth write (`UUID_AUTH`)
+  has no read-back/ack in the protocol — "succeeded" just means the write was accepted, not that
+  the PIN was correct. A failed `goto`/`stop`/`identify` right after a "successful" auth usually
+  means the PIN was wrong, not that the write layer is broken.

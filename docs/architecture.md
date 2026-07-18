@@ -48,13 +48,13 @@ LittleFS SPA web UI):
 | `Mqtt` | PubSubClient + HA discovery, one `cover` per device | Adapted — driven by `Motors` instead of `Shutters` |
 | `HomeKit` | HomeSpan bridge, one Window Covering per motor | Adapted — driven by `Motors`/`SomfyBle`; position model differs (assumed state, no live feed) — see [0005](decisions/0005-apple-homekit-homespan.md) |
 | `Motors` | NVS-backed list of paired motors + calibration + assumed position | New — ported pattern from `Shutters.h` |
-| `SomfyBle` | Connect-on-demand BLE client: connect/auth/goto/stop | New — protocol ported from `vendor/somfy-sonesse2-ble-calib-tool-esp`, translated to NimBLE ([0002](decisions/0002-ble-stack-nimble.md)) |
+| `SomfyBle` | Connect-on-demand BLE client: connect/auth/goto/stop | New — protocol ported from `vendor/somfy-sonesse2-ble-calib-tool-esp`, translated to NimBLE ([0002](decisions/0002-ble-stack-nimble.md)). Real as of Phase 1 (v0.2.0), unverified on hardware. |
 
 ## Open trade-offs
 
 - **Position ground truth vs assumed state** — see
   [decisions/0003](decisions/0003-connect-on-demand-ble.md). Unresolved until Phase 1 hardware
-  testing; the `Mqtt` state-publish design depends on the answer.
+  testing confirms `SomfyBle` actually works; the `Mqtt` state-publish design depends on the answer.
 - **NimBLE vs Bluedroid** — see [decisions/0002](decisions/0002-ble-stack-nimble.md). Chosen for
   footprint; revisit only if it turns out to be materially harder to get NimBLE talking to these
   motors than magik6k's Bluedroid-based reference.

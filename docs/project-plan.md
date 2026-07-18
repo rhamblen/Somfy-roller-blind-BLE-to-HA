@@ -10,9 +10,9 @@ Phased roadmap. See [project-brief.md](project-brief.md) for the full spec and
 | Phase | Version | Title | Status |
 | ----- | ------- | ----- | ------ |
 | S | v0.1.0 | Firmware framework scaffold (WiFi/WebUI/OTA/MQTT, stub BLE/Motors) | ☑ |
-| 1 | v0.2.0 | BLE bring-up: scan, connect, PIN auth, single-motor goto/stop (bench test) | ☐ |
-| 2 | v0.3.0 | Motors config + calibration (open/closed limits, like a shutter's edge calibration) | ☐ |
-| 3 | v0.4.0 | Web UI: Motors tab (add/scan/pair/calibrate) | ☐ |
+| 1 | v0.2.0 | BLE bring-up: connect, PIN auth, goto/stop/identify via the web UI's Motors page | ◐ |
+| 2 | v0.3.0 | Motors calibration (open/closed limits, like a shutter's edge calibration) | ☐ |
+| 3 | v0.4.0 | Web UI: BLE scan + pairing flow (add/remove/rename shipped in Phase 1) | ☐ |
 | 4 | v0.5.0 | MQTT / Home Assistant cover integration + discovery | ☐ |
 | 5+ | — | Multi-motor scale-out, favourites, tilt support (if a venetian motor is added) | ☐ |
 
@@ -54,24 +54,33 @@ Phased roadmap. See [project-brief.md](project-brief.md) for the full spec and
   on 2026-07-18 — first GitHub Release, per the section-completion release policy
   (`docs/ai-context.md` Versioning). Phase S is closed; Phase 1 starts at v0.2.0.
 
-## Phase 1 — BLE bring-up (v0.2.0)
+## Phase 1 — BLE bring-up (v0.2.0) ◐
 
 - **Objective:** prove the ported GATT calls work against a real motor.
-- **What we'll build:** `SomfyBle::connect/authenticate/gotoPosition/stop` implemented for real
-  against `NimBLEClient`, exercised from a bench/serial test path (no web UI yet). Resolve the
-  position-readback open decision above.
+- **What we built:** `SomfyBle::connectAndGoto/connectAndStop/connectAndIdentify` implemented for
+  real against `NimBLEClient` — exact transcription of the vendored reference's wire protocol
+  (PIN → 3-byte LE, goto → 2-byte LE position, stop/identify → single `0x01` byte, write-with-
+  response-then-fallback). Exercised from the web UI's **Motors** page rather than a disposable
+  serial CLI — add a motor (name/MAC/PIN), then Identify/Goto/Stop buttons per motor
+  (`POST /api/motors/{add,remove,rename,goto,stop,identify}`). Pulled forward add/remove/rename
+  from Phase 3, which now shrinks to just the BLE scan + pairing flow.
 - **Prerequisites:** a Somfy Sonesse2 motor, its BLE MAC address, and the PIN from its label.
-- **Exit criteria:** a real motor moves to a commanded position and stops on command, from the
-  ESP32, over BLE, with the link closed between commands.
+- **Exit criteria:** ☑ compiles (69.4% flash / 22.2% RAM); ☐ a real motor moves to a commanded
+  position and stops on command, from the ESP32, over BLE, with the link closed between commands
+  — **unverified, awaiting hardware test.** Resolve the position-readback open decision above once
+  tested (does `UUID_GOTO_POS`/tilt chars read back, or is HA state assumed-only?).
 
-## Phase 2 — Motors config + calibration (v0.3.0)
+## Phase 2 — Motors calibration (v0.3.0)
 
-- **Objective:** persist paired motors and their calibration, mirroring the Shutter Hub's
-  per-shutter edge-calibration pattern (`Shutters::edgeUs` → here, motor open/closed limits).
+- **Objective:** persist each motor's open/closed limits and map raw goto positions to a 0–100%
+  scale, mirroring the Shutter Hub's per-shutter edge-calibration pattern (`Shutters::edgeUs` →
+  here, `Motors::edgePos`, already scaffolded). Phase 1's Goto button takes a raw 0–32767 position;
+  this phase adds the percent mapping (`Motors::lastPct` already exists for this, unused until now).
 
-## Phase 3 — Web UI: Motors tab (v0.4.0)
+## Phase 3 — Web UI: BLE scan + pairing flow (v0.4.0)
 
-- **Objective:** add/scan/pair/calibrate motors from the browser, replacing the bench test path.
+- **Objective:** replace manually typing in a MAC address (Phase 1) with a BLE scan + pick-a-device
+  pairing flow. Add/remove/rename and the bench-test bar already shipped in Phase 1.
 
 ## Phase 4 — MQTT / Home Assistant integration (v0.5.0)
 

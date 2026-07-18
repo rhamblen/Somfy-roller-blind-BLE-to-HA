@@ -68,15 +68,29 @@
       </div>
     </section>
 
-    <!-- MOTORS (placeholder — Phase 3 adds add/scan/pair/calibrate) -->
+    <!-- MOTORS -->
     <section class="page hidden" id="page-motors">
-      <h1>Motors</h1><p class="sub">Paired Somfy motors.</p>
+      <h1>Motors</h1><p class="sub">Add a motor and bench-test BLE control. Calibration (open/closed
+        limits, percent positioning) lands in Phase 2 — <b>Goto</b> below takes a raw position
+        (0 = open, 32767 = closed).</p>
       <div class="card">
-        <div class="card-head"><span class="ic pink">⧉</span><div><h2>Paired motors</h2><p>Read-only this release</p></div></div>
+        <div class="card-head"><span class="ic teal">⧉</span><div><h2>Add motor</h2>
+          <p>Name, BLE MAC address, and the PIN printed on the motor label</p></div></div>
+        <div class="form2">
+          <label>Friendly name<input id="mo_name" placeholder="Front room"></label>
+          <label>BLE MAC address<input id="mo_mac" placeholder="AA:BB:CC:DD:EE:FF"></label>
+        </div>
+        <div class="form2">
+          <label>PIN (from motor label)<input id="mo_pin" placeholder="123456"></label>
+          <div class="endbtn"><button class="btn primary" id="mo_add">+ Add motor</button></div>
+        </div>
+        <p class="msg" id="mo_addmsg"></p>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="ic pink">⧉</span><div><h2>Paired motors</h2>
+          <p>Each command connects over BLE, authenticates, sends, and disconnects — a few seconds per click</p></div></div>
         <div id="mo_list"></div>
         <p class="msg" id="mo_empty">No motors configured yet.</p>
-        <p class="msg">Adding, BLE scanning, PIN pairing, and open/closed calibration are built in
-          Phase 1–3 (see <b>docs/project-plan.md</b>) — this release is the firmware framework only.</p>
       </div>
     </section>
 

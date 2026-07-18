@@ -10,9 +10,8 @@
 // blocking with an internal timeout; callers (Mqtt, WebUI) should not call this from
 // a context that can't afford to block briefly (a few seconds worst case).
 //
-// Stub for Phase S (v0.0.1): the API shape below is real and compiles against
-// NimBLE-Arduino, but the bodies are TODO until Phase 1 hardware bring-up confirms
-// the ported GATT calls actually work against a real motor.
+// connectAndGoto/connectAndStop/connectAndIdentify are real as of Phase 1 (v0.2.0).
+// startScan/scanResultsJson remain stubbed until Phase 3 (pairing UI).
 #pragma once
 #include <Arduino.h>
 

@@ -95,7 +95,7 @@ async function loadInfo() {
   if ($("#page-info").offsetParent !== null) infoTimer = setTimeout(loadInfo, 5000);
 }
 
-// ---- Motors (read-only this release — Phase 3 adds pairing/calibration) -------
+// ---- Motors: add/remove + BLE bench-test (Phase 1: goto/stop/identify) --------
 async function loadMotors() {
   try {
     const motors = await apiGet("/api/motors");
@@ -104,13 +104,57 @@ async function loadMotors() {
     if (!motors.length) { empty.classList.remove("hidden"); return; }
     empty.classList.add("hidden");
     motors.forEach(m => {
-      const row = document.createElement("div"); row.className = "kv";
-      row.innerHTML = `<span>${esc(m.name)} <span class="mono muted">${esc(m.mac || "")}</span></span>` +
-        `<b>${m.calibrated ? "calibrated" : "not calibrated"}</b>`;
+      const row = document.createElement("div"); row.className = "mo-row";
+      row.innerHTML = `
+        <div class="mo-head">
+          <span class="mo-name">${esc(m.name)} <span class="mono muted">${esc(m.mac || "")}</span></span>
+          <span class="muted">${m.calibrated ? "calibrated" : "not calibrated"}</span>
+        </div>
+        <div class="mo-actions">
+          <button class="btn ghost sm" data-act="identify">Identify</button>
+          <input type="number" min="0" max="32767" placeholder="0-32767" data-role="pos">
+          <button class="btn ghost sm" data-act="goto">Go</button>
+          <button class="btn danger sm" data-act="stop">Stop</button>
+          <button class="btn ghost sm" data-act="remove">Remove</button>
+        </div>
+        <p class="mo-msg"></p>`;
+      const msg = row.querySelector(".mo-msg");
+      const posInput = row.querySelector('[data-role="pos"]');
+      row.querySelectorAll("[data-act]").forEach(btn => btn.addEventListener("click", async () => {
+        const act = btn.dataset.act;
+        if (act === "remove") {
+          if (!confirm(`Remove "${m.name}"?`)) return;
+          try { await apiPost("/api/motors/remove", { id: m.id }); loadMotors(); }
+          catch (e) { msg.textContent = "Failed: " + e.message; }
+          return;
+        }
+        row.querySelectorAll("[data-act]").forEach(b => b.disabled = true);
+        msg.textContent = act === "identify" ? "Connecting… authenticating… identify sent…"
+          : act === "stop" ? "Connecting… authenticating… stop sent…"
+          : "Connecting… authenticating… goto sent…";
+        try {
+          const body = { id: m.id };
+          if (act === "goto") body.pos = posInput.value || "0";
+          await apiPost("/api/motors/" + act, body);
+          msg.textContent = "OK — " + act + " succeeded.";
+        } catch (e) { msg.textContent = "Failed: " + e.message; }
+        row.querySelectorAll("[data-act]").forEach(b => b.disabled = false);
+      }));
       list.appendChild(row);
     });
   } catch (e) {}
 }
+$("#mo_add").addEventListener("click", async () => {
+  const name = $("#mo_name").value.trim(), mac = $("#mo_mac").value.trim(), pin = $("#mo_pin").value.trim();
+  if (!mac || !pin) { $("#mo_addmsg").textContent = "MAC and PIN are required."; return; }
+  $("#mo_addmsg").textContent = "Adding…";
+  try {
+    await apiPost("/api/motors/add", { name, mac, pin });
+    $("#mo_name").value = ""; $("#mo_mac").value = ""; $("#mo_pin").value = "";
+    $("#mo_addmsg").textContent = "Added.";
+    loadMotors();
+  } catch (e) { $("#mo_addmsg").textContent = "Failed: " + e.message; }
+});
 
 // ---- MQTT -----------------------------------------------------------------------
 function mqttPill(d) {

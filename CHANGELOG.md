@@ -6,6 +6,19 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-18
+
+### Added
+- Phase 1: `SomfyBle::connectAndGoto/connectAndStop/connectAndIdentify` are real —
+  ported from the vendored reference's exact wire protocol (PIN → 3-byte LE,
+  goto → 2-byte LE position, stop/identify → single `0x01` byte) to
+  `NimBLEClient`. **Unverified on real hardware pending this release's
+  bring-up test.**
+- Web UI Motors page: add/remove/rename a motor (name, MAC, PIN), plus an
+  Identify/Goto/Stop bench-test bar per motor
+  (`POST /api/motors/{add,remove,rename,goto,stop,identify}`). Pulled
+  forward from Phase 3 — see `docs/project-plan.md`.
+
 ## [0.1.2] - 2026-07-18
 
 ### Added

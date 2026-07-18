@@ -5,6 +5,7 @@
 #include "Ota.h"
 #include "Mqtt.h"
 #include "Motors.h"
+#include "SomfyBle.h"
 #include "HomeKit.h"
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -214,10 +215,66 @@ void begin() {
     r->send(200, "text/plain", "ok");
   });
 
-  // ---- Motors (read-only this pass — pairing/calibration UI is Phase 3) ----
+  // ---- Motors (add/remove/rename + bench-test actions; calibration UI is Phase 2/3) ----
   server.on("/api/motors", HTTP_GET, [](AsyncWebServerRequest *r) {
     if (!guard(r)) return;
     r->send(200, "application/json", Motors::listJson());
+  });
+  server.on("/api/motors/add", HTTP_POST, [](AsyncWebServerRequest *r) {
+    if (!guard(r)) return;
+    String name = r->hasParam("name", true) ? r->getParam("name", true)->value() : String("");
+    String mac  = r->hasParam("mac", true)  ? r->getParam("mac", true)->value()  : String("");
+    String pin  = r->hasParam("pin", true)  ? r->getParam("pin", true)->value()  : String("");
+    if (!mac.length() || !pin.length()) {
+      r->send(400, "application/json", "{\"error\":\"mac and pin are required\"}"); return; }
+    if (!Motors::add(name, mac, pin)) {
+      r->send(400, "application/json", "{\"error\":\"maximum motors reached\"}"); return; }
+    Mqtt::motorsChanged();
+    r->send(200, "application/json", Motors::listJson());
+  });
+  server.on("/api/motors/remove", HTTP_POST, [](AsyncWebServerRequest *r) {
+    if (!guard(r)) return;
+    if (!r->hasParam("id", true) || !Motors::remove(r->getParam("id", true)->value())) {
+      r->send(400, "application/json", "{\"error\":\"unknown motor\"}"); return; }
+    Mqtt::motorsChanged();
+    r->send(200, "application/json", Motors::listJson());
+  });
+  server.on("/api/motors/rename", HTTP_POST, [](AsyncWebServerRequest *r) {
+    if (!guard(r)) return;
+    if (!r->hasParam("id", true) || !r->hasParam("name", true) ||
+        !Motors::rename(r->getParam("id", true)->value(), r->getParam("name", true)->value())) {
+      r->send(400, "application/json", "{\"error\":\"rename failed\"}"); return; }
+    Mqtt::motorsChanged();
+    r->send(200, "application/json", Motors::listJson());
+  });
+  // Bench-test actions (Phase 1): connect -> auth -> command -> disconnect, blocking the
+  // request for the BLE round-trip (a few seconds). Raw goto position (0-32767) — no
+  // calibration/percent mapping until Phase 2.
+  server.on("/api/motors/goto", HTTP_POST, [](AsyncWebServerRequest *r) {
+    if (!guard(r)) return;
+    if (!r->hasParam("id", true) || !r->hasParam("pos", true)) {
+      r->send(400, "application/json", "{\"error\":\"missing id/pos\"}"); return; }
+    String id = r->getParam("id", true)->value();
+    if (!Motors::exists(id)) { r->send(400, "application/json", "{\"error\":\"unknown motor\"}"); return; }
+    int pos = r->getParam("pos", true)->value().toInt();
+    bool ok = SomfyBle::connectAndGoto(Motors::macAt(Motors::find(id)), Motors::pinFor(id), pos);
+    r->send(ok ? 200 : 500, "application/json", ok ? "{\"ok\":true}" : "{\"error\":\"BLE command failed\"}");
+  });
+  server.on("/api/motors/stop", HTTP_POST, [](AsyncWebServerRequest *r) {
+    if (!guard(r)) return;
+    if (!r->hasParam("id", true)) { r->send(400, "application/json", "{\"error\":\"missing id\"}"); return; }
+    String id = r->getParam("id", true)->value();
+    if (!Motors::exists(id)) { r->send(400, "application/json", "{\"error\":\"unknown motor\"}"); return; }
+    bool ok = SomfyBle::connectAndStop(Motors::macAt(Motors::find(id)), Motors::pinFor(id));
+    r->send(ok ? 200 : 500, "application/json", ok ? "{\"ok\":true}" : "{\"error\":\"BLE command failed\"}");
+  });
+  server.on("/api/motors/identify", HTTP_POST, [](AsyncWebServerRequest *r) {
+    if (!guard(r)) return;
+    if (!r->hasParam("id", true)) { r->send(400, "application/json", "{\"error\":\"missing id\"}"); return; }
+    String id = r->getParam("id", true)->value();
+    if (!Motors::exists(id)) { r->send(400, "application/json", "{\"error\":\"unknown motor\"}"); return; }
+    bool ok = SomfyBle::connectAndIdentify(Motors::macAt(Motors::find(id)), Motors::pinFor(id));
+    r->send(ok ? 200 : 500, "application/json", ok ? "{\"ok\":true}" : "{\"error\":\"BLE command failed\"}");
   });
 
   // ---- MQTT config ----

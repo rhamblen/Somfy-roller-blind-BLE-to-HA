@@ -45,6 +45,15 @@ h2{font-size:1rem;margin:0}
 .kv span{color:var(--muted)}
 .kv b{font-weight:600;text-align:right}
 
+/* Motors list — one bench-test row per paired motor */
+.mo-row{padding:14px 4px;border-bottom:1px solid var(--line)}
+.mo-row:last-child{border-bottom:0}
+.mo-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.mo-name{font-weight:600}
+.mo-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mo-actions input[type=number]{width:110px;margin:0}
+.mo-msg{color:var(--muted);font-size:.8rem;margin-top:6px;min-height:1.1em}
+
 /* Forms */
 label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:12px}
 label.full{grid-column:1/-1}
