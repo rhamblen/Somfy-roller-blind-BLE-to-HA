@@ -69,6 +69,10 @@ Phased roadmap. See [project-brief.md](project-brief.md) for the full spec and
   position and stops on command, from the ESP32, over BLE, with the link closed between commands
   — **unverified, awaiting hardware test.** Resolve the position-readback open decision above once
   tested (does `UUID_GOTO_POS`/tilt chars read back, or is HA state assumed-only?).
+- **Released:** [v0.2.0](https://github.com/rhamblen/Somfy-roller-blind-BLE-to-HA/releases/tag/v0.2.0)
+  on 2026-07-19, marked **pre-release** on GitHub since hardware verification is still outstanding
+  — published at the project owner's explicit request, ahead of the usual "release on exit
+  criteria met" policy. Un-mark pre-release once the hardware test passes.
 
 ## Phase 2 — Motors calibration (v0.3.0) ◐
 
@@ -85,6 +89,8 @@ Phased roadmap. See [project-brief.md](project-brief.md) for the full spec and
 - **Exit criteria:** ☑ compiles (69.5% flash / 22.2% RAM); ☐ unverified — same hardware-test
   blocker as Phase 1 (calibration is meaningless if `SomfyBle`'s goto doesn't actually move the
   motor). Verify both phases together once hardware testing happens.
+- **Released:** [v0.3.0](https://github.com/rhamblen/Somfy-roller-blind-BLE-to-HA/releases/tag/v0.3.0)
+  on 2026-07-19, marked **pre-release** — same rationale as v0.2.0 above.
 
 ## Phase 3 — Web UI: BLE scan + pairing flow (v0.4.0)
 
