@@ -11,7 +11,7 @@ Phased roadmap. See [project-brief.md](project-brief.md) for the full spec and
 | ----- | ------- | ----- | ------ |
 | S | v0.1.0 | Firmware framework scaffold (WiFi/WebUI/OTA/MQTT, stub BLE/Motors) | ☑ |
 | 1 | v0.2.0 | BLE bring-up: connect, PIN auth, goto/stop/identify via the web UI's Motors page | ◐ |
-| 2 | v0.3.0 | Motors calibration (open/closed limits, like a shutter's edge calibration) | ☐ |
+| 2 | v0.3.0 | Motors calibration (open/closed limits, like a shutter's edge calibration) | ◐ |
 | 3 | v0.4.0 | Web UI: BLE scan + pairing flow (add/remove/rename shipped in Phase 1) | ☐ |
 | 4 | v0.5.0 | MQTT / Home Assistant cover integration + discovery | ☐ |
 | 5+ | — | Multi-motor scale-out, favourites, tilt support (if a venetian motor is added) | ☐ |
@@ -70,12 +70,21 @@ Phased roadmap. See [project-brief.md](project-brief.md) for the full spec and
   — **unverified, awaiting hardware test.** Resolve the position-readback open decision above once
   tested (does `UUID_GOTO_POS`/tilt chars read back, or is HA state assumed-only?).
 
-## Phase 2 — Motors calibration (v0.3.0)
+## Phase 2 — Motors calibration (v0.3.0) ◐
 
 - **Objective:** persist each motor's open/closed limits and map raw goto positions to a 0–100%
   scale, mirroring the Shutter Hub's per-shutter edge-calibration pattern (`Shutters::edgeUs` →
-  here, `Motors::edgePos`, already scaffolded). Phase 1's Goto button takes a raw 0–32767 position;
-  this phase adds the percent mapping (`Motors::lastPct` already exists for this, unused until now).
+  here, `Motors::edgePos`, already scaffolded).
+- **What we built:** `Motors::pctToPos/posToPct` — the shared raw↔percent math, moved out of a
+  private `HomeKit.cpp` helper into `Motors` so both `HomeKit` and the web UI use the same source
+  of truth (falls back to the full 0–32767 range when uncalibrated, so a motor stays operable
+  before calibration, same as the Shutter Hub's MVP). Web UI: **Set Open** / **Set Closed**
+  buttons snapshot whatever raw position is in the Goto field — there's no BLE position readback
+  (ADR 0003), so jog-then-mark is the only calibration method available. A **Goto %** control
+  sends a 0–100% position through the calibration math.
+- **Exit criteria:** ☑ compiles (69.5% flash / 22.2% RAM); ☐ unverified — same hardware-test
+  blocker as Phase 1 (calibration is meaningless if `SomfyBle`'s goto doesn't actually move the
+  motor). Verify both phases together once hardware testing happens.
 
 ## Phase 3 — Web UI: BLE scan + pairing flow (v0.4.0)
 

@@ -47,7 +47,7 @@ LittleFS SPA web UI):
 | `WebUI` | ESPAsyncWebServer + LittleFS SPA + `/ws/logs` + JSON REST + recovery page | Adapted — Motors status/routes replace Shutters/ServoController |
 | `Mqtt` | PubSubClient + HA discovery, one `cover` per device | Adapted — driven by `Motors` instead of `Shutters` |
 | `HomeKit` | HomeSpan bridge, one Window Covering per motor | Adapted — driven by `Motors`/`SomfyBle`; position model differs (assumed state, no live feed) — see [0005](decisions/0005-apple-homekit-homespan.md) |
-| `Motors` | NVS-backed list of paired motors + calibration + assumed position | New — ported pattern from `Shutters.h` |
+| `Motors` | NVS-backed list of paired motors + calibration + assumed position; owns the shared `pctToPos`/`posToPct` raw↔percent math (`HomeKit` and the web UI both call it, not a copy each) | New — ported pattern from `Shutters.h` |
 | `SomfyBle` | Connect-on-demand BLE client: connect/auth/goto/stop | New — protocol ported from `vendor/somfy-sonesse2-ble-calib-tool-esp`, translated to NimBLE ([0002](decisions/0002-ble-stack-nimble.md)). Real as of Phase 1 (v0.2.0), unverified on hardware. |
 
 ## Open trade-offs

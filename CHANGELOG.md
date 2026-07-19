@@ -6,6 +6,21 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-19
+
+### Added
+- Phase 2: motor calibration. `Motors::pctToPos/posToPct` — raw (0-32767) <->
+  percent (0-100, HA convention) math, moved out of a private `HomeKit.cpp`
+  helper into `Motors` so it's one shared implementation instead of a
+  duplicate. Web UI: **Set Open** / **Set Closed** buttons snapshot the raw
+  position last sent via Goto (no BLE position readback exists — this is
+  the only calibration method available); a **Goto %** control drives a
+  0-100% position through the same math.
+- **Unverified — written before Phase 1's hardware test**, at the project
+  owner's request (pure storage/math/UI, no new BLE calls, so safe to build
+  ahead). Neither v0.2.0 nor v0.3.0 is released until a real motor confirms
+  `SomfyBle` works; both get verified together.
+
 ## [0.2.0] - 2026-07-18
 
 ### Added

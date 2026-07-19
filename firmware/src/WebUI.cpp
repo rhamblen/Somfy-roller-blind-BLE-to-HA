@@ -248,8 +248,8 @@ void begin() {
     r->send(200, "application/json", Motors::listJson());
   });
   // Bench-test actions (Phase 1): connect -> auth -> command -> disconnect, blocking the
-  // request for the BLE round-trip (a few seconds). Raw goto position (0-32767) — no
-  // calibration/percent mapping until Phase 2.
+  // request for the BLE round-trip (a few seconds). Raw goto position (0-32767) — jog to
+  // an endpoint with this, then Set Open/Closed (below) to calibrate it.
   server.on("/api/motors/goto", HTTP_POST, [](AsyncWebServerRequest *r) {
     if (!guard(r)) return;
     if (!r->hasParam("id", true) || !r->hasParam("pos", true)) {
@@ -258,6 +258,8 @@ void begin() {
     if (!Motors::exists(id)) { r->send(400, "application/json", "{\"error\":\"unknown motor\"}"); return; }
     int pos = r->getParam("pos", true)->value().toInt();
     bool ok = SomfyBle::connectAndGoto(Motors::macAt(Motors::find(id)), Motors::pinFor(id), pos);
+    if (ok) Motors::setLastPct(id, Motors::posToPct(id, pos));  // keep assumed state honest
+                                                                 // even when jogging by raw pos
     r->send(ok ? 200 : 500, "application/json", ok ? "{\"ok\":true}" : "{\"error\":\"BLE command failed\"}");
   });
   server.on("/api/motors/stop", HTTP_POST, [](AsyncWebServerRequest *r) {
@@ -274,6 +276,37 @@ void begin() {
     String id = r->getParam("id", true)->value();
     if (!Motors::exists(id)) { r->send(400, "application/json", "{\"error\":\"unknown motor\"}"); return; }
     bool ok = SomfyBle::connectAndIdentify(Motors::macAt(Motors::find(id)), Motors::pinFor(id));
+    r->send(ok ? 200 : 500, "application/json", ok ? "{\"ok\":true}" : "{\"error\":\"BLE command failed\"}");
+  });
+  // Calibration (Phase 2): snapshot a raw position (typically whatever was last sent via
+  // /api/motors/goto while jogging) as the open or closed edge. No position readback exists
+  // (ADR 0003), so this is the only way to calibrate — jog there, then mark it.
+  server.on("/api/motors/set-edge", HTTP_POST, [](AsyncWebServerRequest *r) {
+    if (!guard(r)) return;
+    if (!r->hasParam("id", true) || !r->hasParam("edge", true) || !r->hasParam("pos", true)) {
+      r->send(400, "application/json", "{\"error\":\"missing id/edge/pos\"}"); return; }
+    String id = r->getParam("id", true)->value();
+    String edge = r->getParam("edge", true)->value();
+    if (edge != "open" && edge != "closed") {
+      r->send(400, "application/json", "{\"error\":\"edge must be open or closed\"}"); return; }
+    int pos = r->getParam("pos", true)->value().toInt();
+    if (!Motors::setEdge(id, edge == "open", pos)) {
+      r->send(400, "application/json", "{\"error\":\"unknown motor\"}"); return; }
+    Mqtt::motorsChanged();
+    r->send(200, "application/json", Motors::listJson());
+  });
+  // Calibrated equivalent of /api/motors/goto — takes a 0-100% position and maps it
+  // through Motors::pctToPos before sending, then records the assumed state on success.
+  server.on("/api/motors/goto-pct", HTTP_POST, [](AsyncWebServerRequest *r) {
+    if (!guard(r)) return;
+    if (!r->hasParam("id", true) || !r->hasParam("pct", true)) {
+      r->send(400, "application/json", "{\"error\":\"missing id/pct\"}"); return; }
+    String id = r->getParam("id", true)->value();
+    if (!Motors::exists(id)) { r->send(400, "application/json", "{\"error\":\"unknown motor\"}"); return; }
+    int pct = r->getParam("pct", true)->value().toInt();
+    bool ok = SomfyBle::connectAndGoto(Motors::macAt(Motors::find(id)), Motors::pinFor(id),
+                                        Motors::pctToPos(id, pct));
+    if (ok) Motors::setLastPct(id, pct);
     r->send(ok ? 200 : 500, "application/json", ok ? "{\"ok\":true}" : "{\"error\":\"BLE command failed\"}");
   });
 

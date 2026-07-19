@@ -95,7 +95,11 @@ async function loadInfo() {
   if ($("#page-info").offsetParent !== null) infoTimer = setTimeout(loadInfo, 5000);
 }
 
-// ---- Motors: add/remove + BLE bench-test (Phase 1: goto/stop/identify) --------
+// ---- Motors: add/remove + BLE bench-test (Phase 1: goto/stop/identify) +
+// calibration (Phase 2: no position readback — jog with raw Goto, then Set Open/Closed
+// snapshots whatever's in that field; Goto % becomes meaningful once both edges are set,
+// but works pre-calibration too via Motors::pctToPos's full-range fallback). ------------
+const posLabel = v => (v === -1 || v === undefined) ? "not set" : v;
 async function loadMotors() {
   try {
     const motors = await apiGet("/api/motors");
@@ -115,17 +119,38 @@ async function loadMotors() {
           <input type="number" min="0" max="32767" placeholder="0-32767" data-role="pos">
           <button class="btn ghost sm" data-act="goto">Go</button>
           <button class="btn danger sm" data-act="stop">Stop</button>
+        </div>
+        <div class="mo-actions">
+          <span class="muted">Open: <b data-role="openv">${posLabel(m.openPos)}</b></span>
+          <button class="btn ghost sm" data-act="set-open">Set Open</button>
+          <span class="muted">Closed: <b data-role="closedv">${posLabel(m.closedPos)}</b></span>
+          <button class="btn ghost sm" data-act="set-closed">Set Closed</button>
+        </div>
+        <div class="mo-actions">
+          <input type="number" min="0" max="100" placeholder="0-100%" data-role="pct">
+          <button class="btn ghost sm" data-act="goto-pct">Goto %</button>
           <button class="btn ghost sm" data-act="remove">Remove</button>
         </div>
         <p class="mo-msg"></p>`;
       const msg = row.querySelector(".mo-msg");
       const posInput = row.querySelector('[data-role="pos"]');
+      const pctInput = row.querySelector('[data-role="pct"]');
       row.querySelectorAll("[data-act]").forEach(btn => btn.addEventListener("click", async () => {
         const act = btn.dataset.act;
         if (act === "remove") {
           if (!confirm(`Remove "${m.name}"?`)) return;
           try { await apiPost("/api/motors/remove", { id: m.id }); loadMotors(); }
           catch (e) { msg.textContent = "Failed: " + e.message; }
+          return;
+        }
+        if (act === "set-open" || act === "set-closed") {
+          const edge = act === "set-open" ? "open" : "closed";
+          msg.textContent = `Setting ${edge}…`;
+          try {
+            await apiPost("/api/motors/set-edge", { id: m.id, edge, pos: posInput.value || "0" });
+            msg.textContent = `${edge} = ${posInput.value || 0}.`;
+            loadMotors();
+          } catch (e) { msg.textContent = "Failed: " + e.message; }
           return;
         }
         row.querySelectorAll("[data-act]").forEach(b => b.disabled = true);
@@ -135,6 +160,7 @@ async function loadMotors() {
         try {
           const body = { id: m.id };
           if (act === "goto") body.pos = posInput.value || "0";
+          if (act === "goto-pct") body.pct = pctInput.value || "0";
           await apiPost("/api/motors/" + act, body);
           msg.textContent = "OK — " + act + " succeeded.";
         } catch (e) { msg.textContent = "Failed: " + e.message; }

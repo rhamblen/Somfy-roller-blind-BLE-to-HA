@@ -29,28 +29,10 @@ bool          g_hapWarned    = false;   // stall WARN already emitted?
 String g_bridgeName, g_code, g_ssid, g_psk, g_host;
 String g_names[Motors::MAX];
 
-// ---- Position maths — raw goto-position units (0 = open, 32767 = closed, per magik6k's
-// protocol reference) <-> HA-convention percent (0 = closed, 100 = open). Uncalibrated
-// motors fall back to the full protocol range so a motor is operable from Apple Home
-// before it's calibrated, same MVP the Shutter Hub made for its shutters.
-struct MInfo { String id; String mac; bool cal; int openPos; int closedPos; };
-
-MInfo motorInfo(int i) {
-  MInfo m;
-  m.id       = Motors::idAt(i);
-  m.mac      = Motors::macAt(i);
-  int op     = Motors::edgePos(m.id, true);
-  int cl     = Motors::edgePos(m.id, false);
-  m.openPos  = (op != Motors::UNSET) ? op : 0;
-  m.closedPos = (cl != Motors::UNSET) ? cl : 32767;
-  m.cal      = m.openPos != m.closedPos;      // operable as long as the ends differ
-  return m;
-}
-
-int pctToPos(const MInfo &m, int pct) {
-  pct = constrain(pct, 0, 100);
-  return m.closedPos + (int)lroundf((m.openPos - m.closedPos) * pct / 100.0f);
-}
+// Position maths (raw 0-32767 <-> HA-convention percent) now live in Motors::pctToPos/
+// posToPct — single source of truth shared with the web UI's calibrated Goto (Phase 2).
+// Uncalibrated motors still fall back to the full protocol range there, so a motor stays
+// operable from Apple Home before it's calibrated (same MVP the Shutter Hub made).
 
 // ---- One HomeKit Window Covering, bound to a motor index ----------------------------
 // No live position feed exists (connect-on-demand BLE — see HomeKit.h), so there is no
@@ -69,16 +51,18 @@ struct DevMotor : Service::WindowCovering {
   }
 
   boolean update() override {
-    MInfo m = motorInfo(idx);
-    int   tp = target->getNewVal();
-    String pin = Motors::pinFor(m.id);
-    LOGD("homekit", "%s: target %d%% -> goto %d%s", m.id.c_str(), tp, pctToPos(m, tp),
-         m.cal ? "" : " (default envelope — not calibrated)");
-    if (!SomfyBle::connectAndGoto(m.mac, pin, pctToPos(m, tp))) {
-      LOGW("homekit", "%s: BLE command failed — reverting Home app tile", m.id.c_str());
+    String id  = Motors::idAt(idx);
+    String mac = Motors::macAt(idx);
+    String pin = Motors::pinFor(id);
+    int    tp  = target->getNewVal();
+    int    pos = Motors::pctToPos(id, tp);
+    LOGD("homekit", "%s: target %d%% -> goto %d%s", id.c_str(), tp, pos,
+         Motors::calibratedAt(idx) ? "" : " (default envelope — not calibrated)");
+    if (!SomfyBle::connectAndGoto(mac, pin, pos)) {
+      LOGW("homekit", "%s: BLE command failed — reverting Home app tile", id.c_str());
       return false;                             // reject: Home app reverts the tile
     }
-    Motors::setLastPct(m.id, tp);
+    Motors::setLastPct(id, tp);
     current->setVal(tp);
     return true;
   }
@@ -150,10 +134,9 @@ void begin() {
         new Characteristic::Identify();
         new Characteristic::Name(g_names[i].c_str());
       new DevMotor(i);
-    MInfo m = motorInfo(i);
     LOGI("homekit", "  accessory '%s' -> %s, %s",
-         g_names[i].c_str(), m.mac.c_str(),
-         m.cal ? "calibrated" : "default envelope (operable, calibrate for accuracy)");
+         g_names[i].c_str(), Motors::macAt(i).c_str(),
+         Motors::calibratedAt(i) ? "calibrated" : "default envelope (operable, calibrate for accuracy)");
   }
   LOGI("homekit", "bridge up — %d motor accessory(ies)", n);
 

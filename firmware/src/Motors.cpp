@@ -175,6 +175,30 @@ int edgePos(const String &id, bool openEdge) {
   return openEdge ? g_list[i].openPos : g_list[i].closedPos;
 }
 
+// Resolved open/closed edges for math: calibrated values if set, else the full protocol
+// range (0=open, 32767=closed) — mirrors HomeKit.cpp's former local motorInfo() helper.
+void resolvedEdges(const String &id, int &openPos, int &closedPos) {
+  int op = edgePos(id, true);
+  int cl = edgePos(id, false);
+  openPos   = (op != UNSET) ? op : 0;
+  closedPos = (cl != UNSET) ? cl : 32767;
+}
+
+int posToPct(const String &id, int pos) {
+  int openPos, closedPos;
+  resolvedEdges(id, openPos, closedPos);
+  if (openPos == closedPos) return 0;             // degenerate — no usable travel range
+  int pct = (int)lroundf(100.0f * (pos - closedPos) / (float)(openPos - closedPos));
+  return constrain(pct, 0, 100);
+}
+
+int pctToPos(const String &id, int pct) {
+  int openPos, closedPos;
+  resolvedEdges(id, openPos, closedPos);
+  pct = constrain(pct, 0, 100);
+  return closedPos + (int)lroundf((openPos - closedPos) * pct / 100.0f);
+}
+
 int lastPct(const String &id) {
   int i = indexOf(id);
   return i < 0 ? UNSET : g_list[i].lastPct;

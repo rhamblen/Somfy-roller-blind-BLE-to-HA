@@ -37,6 +37,14 @@ String pinFor(const String &id);                            // for SomfyBle to a
 bool   setEdge(const String &id, bool openEdge, int pos);    // snapshot open/closed; calibrated once both set
 int    edgePos(const String &id, bool openEdge);             // calibrated open/closed position, or UNSET
 
+// ---- Position math (raw 0-32767 <-> HA-convention percent 0-100, 0 = closed) --
+// Single source of truth for both HomeKit and the web UI's calibrated Goto (Mqtt in
+// Phase 4 too). Uses the calibrated edges when both are set; otherwise falls back to
+// the full 0-32767 protocol range so a motor is still operable pre-calibration (same
+// MVP the Shutter Hub made for uncalibrated shutters).
+int    posToPct(const String &id, int pos);
+int    pctToPos(const String &id, int pct);
+
 // ---- Assumed state (0-100 %, HA convention: 0 = closed) -----------------------
 // BLE is connect-on-demand (docs/decisions/0003-connect-on-demand-ble.md) — there is no
 // live position feed to poll, so both Mqtt and HomeKit report this single shared "last

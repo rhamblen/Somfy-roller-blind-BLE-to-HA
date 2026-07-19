@@ -78,10 +78,17 @@ as [v0.1.2](https://github.com/rhamblen/Somfy-roller-blind-BLE-to-HA/releases/ta
 **1** (v0.2.0, code done, **unverified on hardware**): `SomfyBle` is no longer a stub —
 `connectAndGoto/connectAndStop/connectAndIdentify` are real, ported from the vendored reference's
 exact wire protocol to `NimBLEClient`. Motors add/remove/rename + a bench-test bar (Identify/Goto/
-Stop) ship in the web UI's Motors page now, pulled forward from Phase 3. Builds at 69.4% flash /
-22.2% RAM. Position-readback question still open — resolve once a real motor confirms this works.
-Remaining: **2** (v0.3.0) Motors calibration (percent mapping) → **3** (v0.4.0) BLE scan/pairing
-flow → **4** (v0.5.0) MQTT/HA cover integration. See [project-plan.md](project-plan.md).
+Stop) ship in the web UI's Motors page now, pulled forward from Phase 3. Position-readback
+question still open — resolve once a real motor confirms this works.
+**2** (v0.3.0, code done, **unverified — same blocker as Phase 1**): calibration —
+`Motors::pctToPos/posToPct` (moved out of a private `HomeKit.cpp` helper, now the one shared
+raw↔percent implementation) plus web UI **Set Open**/**Set Closed** (snapshots the raw position
+last sent via Goto — no BLE readback exists, so jog-then-mark is the only method) and a **Goto %**
+control. Builds at 69.5% flash / 22.2% RAM. The user chose to write this before hardware-testing
+Phase 1 since it's pure storage/math/UI, no new BLE calls — but **neither v0.2.0 nor v0.3.0 is
+released** until a real motor confirms `SomfyBle` actually works; verify both together.
+Remaining: **3** (v0.4.0) BLE scan/pairing flow → **4** (v0.5.0) MQTT/HA cover integration.
+See [project-plan.md](project-plan.md).
 
 ## Versioning
 
